@@ -1,0 +1,168 @@
+---90) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".WAGE_SUPPORT_PLAN_BASE
+
+
+WITH bronze_layer AS (
+    SELECT
+        s1.id,
+        s1.wageid,
+        s1.wagecapshareid,
+        s1.month,
+        s1.date,
+        s1.currentwage,
+        s1.itemcap,
+        s1.tkshareconfigpct,
+        s1.tkshareactualpct,
+        s1.tkshareamt,
+        s1.customershareamt,
+        s1.customersharepct,
+        s1.newwage,
+        s1.transactionstatusid,
+        s1.monthstartdate,
+        s1.monthenddate,
+        s1.monthpaymentdate,
+        s1.claimingperiodduedate,
+        s1.paymentplanitemreference,
+        s1.migrationinvoicemis,
+        s1.monthlyduedate,
+        s2.tws_name AS mis_name,
+        s2.tws_approvedon AS mis_approvedon,
+        s2.tws_current_wage AS mis_currentwage,
+        s2.tws_support_start_date AS supportsdate,
+        s2.tws_submittedon AS mis_submittedon,
+        s2.tmkn_ismigrated AS mis_ismigrated,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_VYW_WAGESUPPORTPLAN s1
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TWS_WAGESUBSIDYBASE s2
+        ON CAST(s1.wageid AS VARCHAR) = CAST(s2.tws_wagesubsidyid AS VARCHAR)
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        wageid,
+        wagecapshareid,
+        month,
+        date,
+        currentwage,
+        itemcap,
+        tkshareconfigpct,
+        tkshareactualpct,
+        tkshareamt,
+        customershareamt,
+        customersharepct,
+        newwage,
+        transactionstatusid,
+        monthstartdate,
+        monthenddate,
+        monthpaymentdate,
+        claimingperiodduedate,
+        paymentplanitemreference,
+        migrationinvoicemis,
+        monthlyduedate,
+        mis_name,
+        mis_approvedon,
+        mis_currentwage,
+        supportsdate,
+        mis_submittedon,
+        mis_ismigrated,
+        is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".WAGE_SUPPORT_PLAN_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+SELECT 'COUNT_VALIDATION' AS validation_type,
+       COUNT(*) AS bronze_count,
+       (SELECT COUNT(*) FROM silver_layer) AS silver_count
+FROM bronze_layer
+
+UNION ALL
+
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) b
+
+UNION ALL
+
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) s
+
+UNION ALL
+
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(wageid AS VARCHAR),
+        CAST(newwage AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(wageid AS VARCHAR),
+        CAST(newwage AS VARCHAR)
+    FROM silver_layer
+) bns
+
+UNION ALL
+
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(wageid AS VARCHAR),
+        CAST(newwage AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(wageid AS VARCHAR),
+        CAST(newwage AS VARCHAR)
+    FROM bronze_layer
+) snb
+
+UNION ALL
+
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer s
+        ON CAST(b.id AS VARCHAR) = CAST(s.id AS VARCHAR)
+    WHERE COALESCE(CAST(b.wageid AS VARCHAR), '') <> COALESCE(CAST(s.wageid AS VARCHAR), '')
+       OR COALESCE(CAST(b.month AS VARCHAR), '') <> COALESCE(CAST(s.month AS VARCHAR), '')
+       OR COALESCE(CAST(b.currentwage AS VARCHAR), '') <> COALESCE(CAST(s.currentwage AS VARCHAR), '')
+       OR COALESCE(CAST(b.tkshareamt AS VARCHAR), '') <> COALESCE(CAST(s.tkshareamt AS VARCHAR), '')
+       OR COALESCE(CAST(b.customershareamt AS VARCHAR), '') <> COALESCE(CAST(s.customershareamt AS VARCHAR), '')
+       OR COALESCE(CAST(b.newwage AS VARCHAR), '') <> COALESCE(CAST(s.newwage AS VARCHAR), '')
+       OR COALESCE(CAST(b.transactionstatusid AS VARCHAR), '') <> COALESCE(CAST(s.transactionstatusid AS VARCHAR), '')
+       OR COALESCE(CAST(b.mis_name AS VARCHAR), '') <> COALESCE(CAST(s.mis_name AS VARCHAR), '')
+       OR COALESCE(CAST(b.mis_currentwage AS VARCHAR), '') <> COALESCE(CAST(s.mis_currentwage AS VARCHAR), '')
+) t;

@@ -1,0 +1,138 @@
+ ---84) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".TLV_TARABUTINTENT_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        id,
+        portaluserid,
+        intentid,
+        tarabutintentstatusid,
+        providerid,
+        expiry,
+        reference,
+        intentstatusid,
+        createdon,
+        updatedon,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_TLV_TARABUTINTENT3
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        portaluserid,
+        intentid,
+        tarabutintentstatusid,
+        providerid,
+        expiry,
+        reference,
+        intentstatus,
+        createdon,
+        updatedon,
+        is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".TLV_TARABUTINTENT_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+-- COUNT VALIDATION
+SELECT 'COUNT_VALIDATION', COUNT(*), (SELECT COUNT(*) FROM silver_layer)
+FROM bronze_layer
+
+UNION ALL
+
+-- DUPLICATE CHECK - BRONZE
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+-- DUPLICATE CHECK - SILVER
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+-- PRIMARY KEY NULL CHECK - BRONZE
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+-- PRIMARY KEY NULL CHECK - SILVER
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+-- BRONZE NOT IN SILVER
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(intentid AS VARCHAR),
+        CAST(reference AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(intentid AS VARCHAR),
+        CAST(reference AS VARCHAR)
+    FROM silver_layer
+) t
+
+UNION ALL
+
+-- SILVER NOT IN BRONZE
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(intentid AS VARCHAR),
+        CAST(reference AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(intentid AS VARCHAR),
+        CAST(reference AS VARCHAR)
+    FROM bronze_layer
+) t
+
+UNION ALL
+
+-- COLUMN MISMATCH COUNT
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer s
+        ON b.id = s.id
+    WHERE
+        COALESCE(CAST(b.portaluserid AS VARCHAR), '') <> COALESCE(CAST(s.portaluserid AS VARCHAR), '')
+        OR COALESCE(CAST(b.intentid AS VARCHAR), '') <> COALESCE(CAST(s.intentid AS VARCHAR), '')
+        OR COALESCE(CAST(b.tarabutintentstatusid AS VARCHAR), '') <> COALESCE(CAST(s.tarabutintentstatusid AS VARCHAR), '')
+        OR COALESCE(CAST(b.providerid AS VARCHAR), '') <> COALESCE(CAST(s.providerid AS VARCHAR), '')
+        OR COALESCE(CAST(b.expiry AS VARCHAR), '') <> COALESCE(CAST(s.expiry AS VARCHAR), '')
+        OR COALESCE(CAST(b.reference AS VARCHAR), '') <> COALESCE(CAST(s.reference AS VARCHAR), '')
+        OR COALESCE(CAST(b.intentstatusid AS VARCHAR), '') <> COALESCE(CAST(s.intentstatus AS VARCHAR), '')
+        OR COALESCE(CAST(b.createdon AS VARCHAR), '') <> COALESCE(CAST(s.createdon AS VARCHAR), '')
+        OR COALESCE(CAST(b.updatedon AS VARCHAR), '') <> COALESCE(CAST(s.updatedon AS VARCHAR), '')
+) t;

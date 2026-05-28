@@ -1,0 +1,140 @@
+---88) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".USER_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        id,
+        tenant_id,
+        is_active,
+        creation_date,
+        last_login,
+        name,
+        mobilephone,
+        email,
+        username,
+        password,
+        external_id
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSSYS_USER
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        tenant_id,
+        is_active,
+        creation_date,
+        last_login,
+        name,
+        mobilephone,
+        email,
+        username,
+        password,
+        external_id
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".USER_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+-- COUNT
+SELECT 'COUNT_VALIDATION' AS validation_type,
+       (SELECT COUNT(*) FROM bronze_layer) AS bronze_count,
+       (SELECT COUNT(*) FROM silver_layer) AS silver_count
+
+UNION ALL
+
+-- DUPLICATES BRONZE
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT CAST(id AS VARCHAR) AS id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+-- DUPLICATES SILVER
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT CAST(id AS VARCHAR) AS id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+-- PK NULL BRONZE
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+-- PK NULL SILVER
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+-- BRONZE NOT IN SILVER (FIXED EXCEPT TYPES)
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(email AS VARCHAR),
+        CAST(username AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(email AS VARCHAR),
+        CAST(username AS VARCHAR)
+    FROM silver_layer
+)
+
+UNION ALL
+
+-- SILVER NOT IN BRONZE
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(email AS VARCHAR),
+        CAST(username AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(email AS VARCHAR),
+        CAST(username AS VARCHAR)
+    FROM bronze_layer
+)
+
+UNION ALL
+
+-- COLUMN MISMATCH COUNT
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    FULL OUTER JOIN silver_layer s
+        ON CAST(b.id AS VARCHAR) = CAST(s.id AS VARCHAR)
+    WHERE
+           COALESCE(CAST(b.tenant_id AS VARCHAR),'') <> COALESCE(CAST(s.tenant_id AS VARCHAR),'')
+        OR COALESCE(CAST(b.is_active AS VARCHAR),'') <> COALESCE(CAST(s.is_active AS VARCHAR),'')
+        OR COALESCE(CAST(b.creation_date AS VARCHAR),'') <> COALESCE(CAST(s.creation_date AS VARCHAR),'')
+        OR COALESCE(CAST(b.last_login AS VARCHAR),'') <> COALESCE(CAST(s.last_login AS VARCHAR),'')
+        OR COALESCE(CAST(b.name AS VARCHAR),'') <> COALESCE(CAST(s.name AS VARCHAR),'')
+        OR COALESCE(CAST(b.mobilephone AS VARCHAR),'') <> COALESCE(CAST(s.mobilephone AS VARCHAR),'')
+        OR COALESCE(CAST(b.email AS VARCHAR),'') <> COALESCE(CAST(s.email AS VARCHAR),'')
+        OR COALESCE(CAST(b.username AS VARCHAR),'') <> COALESCE(CAST(s.username AS VARCHAR),'')
+        OR COALESCE(CAST(b.password AS VARCHAR),'') <> COALESCE(CAST(s.password AS VARCHAR),'')
+        OR COALESCE(CAST(b.external_id AS VARCHAR),'') <> COALESCE(CAST(s.external_id AS VARCHAR),'')
+) t;

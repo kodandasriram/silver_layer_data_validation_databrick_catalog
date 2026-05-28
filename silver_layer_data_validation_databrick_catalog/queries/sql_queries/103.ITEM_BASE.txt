@@ -1,0 +1,143 @@
+---103) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".ITEM_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        id,
+        maincategory,
+        subcategory,
+        itemname,
+        itemcode,
+        manufacturer,
+        supportareaid,
+        supplier,
+        price,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_D1O_ITEM
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        maincategory,
+        subcategory,
+        itemname,
+        itemcode,
+        manufacturer,
+        supportarea,
+        supplier,
+        price,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".ITEM_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+SELECT 'COUNT_VALIDATION' AS validation_type,
+       COUNT(*) AS bronze_count,
+       (SELECT COUNT(*) FROM silver_layer) AS silver_count
+FROM bronze_layer
+
+UNION ALL
+
+SELECT 'DUPLICATE_BRONZE',
+       COUNT(*),
+       NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) t
+
+UNION ALL
+
+SELECT 'DUPLICATE_SILVER',
+       COUNT(*),
+       NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) t
+
+UNION ALL
+
+SELECT 'PK_NULL_BRONZE',
+       COUNT(*),
+       NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'PK_NULL_SILVER',
+       COUNT(*),
+       NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'BRONZE_NOT_IN_SILVER',
+       COUNT(*),
+       NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemname AS VARCHAR),
+        CAST(price AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemname AS VARCHAR),
+        CAST(price AS VARCHAR)
+    FROM silver_layer
+) t
+
+UNION ALL
+
+SELECT 'SILVER_NOT_IN_BRONZE',
+       COUNT(*),
+       NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemname AS VARCHAR),
+        CAST(price AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemname AS VARCHAR),
+        CAST(price AS VARCHAR)
+    FROM bronze_layer
+) t
+
+UNION ALL
+
+SELECT 'COLUMN_MISMATCH_COUNT',
+       COUNT(*),
+       NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    INNER JOIN silver_layer s
+        ON b.id = s.id
+    WHERE
+        COALESCE(CAST(b.maincategory AS VARCHAR), '') <> COALESCE(CAST(s.maincategory AS VARCHAR), '')
+        OR COALESCE(CAST(b.subcategory AS VARCHAR), '') <> COALESCE(CAST(s.subcategory AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemname AS VARCHAR), '') <> COALESCE(CAST(s.itemname AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemcode AS VARCHAR), '') <> COALESCE(CAST(s.itemcode AS VARCHAR), '')
+        OR COALESCE(CAST(b.manufacturer AS VARCHAR), '') <> COALESCE(CAST(s.manufacturer AS VARCHAR), '')
+        OR COALESCE(CAST(b.supportareaid AS VARCHAR), '') <> COALESCE(CAST(s.supportarea AS VARCHAR), '')
+        OR COALESCE(CAST(b.supplier AS VARCHAR), '') <> COALESCE(CAST(s.supplier AS VARCHAR), '')
+        OR COALESCE(CAST(b.price AS VARCHAR), '') <> COALESCE(CAST(s.price AS VARCHAR), '')
+) t;

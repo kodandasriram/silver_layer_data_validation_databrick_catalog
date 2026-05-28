@@ -1,0 +1,137 @@
+---82) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".bank_base
+
+WITH bronze_layer AS (
+    SELECT
+        COALESCE(CAST(s2.id AS VARCHAR), CAST(s1.id AS VARCHAR)) AS id,
+
+        CAST(s2.bankname AS VARCHAR) AS bankname,
+        CAST(s1.label AS VARCHAR) AS label,
+
+        CAST(s2.bankabbreviation AS VARCHAR) AS bankabbreviation,
+        CAST(s2.swiftbankcode AS VARCHAR) AS swiftbankcode,
+        CAST(s2.tarabutproviderid AS VARCHAR) AS tarabutproviderid,
+        CAST(s2.logourl AS VARCHAR) AS logourl,
+        CAST(s2.isopenbankingenabled AS VARCHAR) AS isopenbankingenabled,
+        CAST(s2.biccode AS VARCHAR) AS biccode
+
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_BANKNAMES s1
+    FULL OUTER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_TLV_BANK s2
+        ON CAST(s1.id AS VARCHAR) = CAST(s2.id AS VARCHAR)
+),
+
+silver_layer AS (
+    SELECT
+        CAST(id AS VARCHAR) AS id,
+        CAST(bankname AS VARCHAR) AS bankname,
+        CAST(bankabbreviation AS VARCHAR) AS bankabbreviation,
+        CAST(swiftbankcode AS VARCHAR) AS swiftbankcode,
+        CAST(tarabutproviderid AS VARCHAR) AS tarabutproviderid,
+        CAST(logourl AS VARCHAR) AS logourl,
+        CAST(isopenbankingenabled AS VARCHAR) AS isopenbankingenabled,
+        CAST(biccode AS VARCHAR) AS biccode
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".BANK_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+-- COUNT
+SELECT 'COUNT_VALIDATION' AS validation_type,
+       (SELECT COUNT(*) FROM bronze_layer) AS bronze_count,
+       (SELECT COUNT(*) FROM silver_layer) AS silver_count
+
+UNION ALL
+
+-- DUPLICATES BRONZE
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+-- DUPLICATES SILVER
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+-- PK NULL BRONZE
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+-- PK NULL SILVER
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+-- BRONZE NOT IN SILVER (FIXED EXCEPT)
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(bankname AS VARCHAR),
+        CAST(bankabbreviation AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(bankname AS VARCHAR),
+        CAST(bankabbreviation AS VARCHAR)
+    FROM silver_layer
+)
+
+UNION ALL
+
+-- SILVER NOT IN BRONZE
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(bankname AS VARCHAR),
+        CAST(bankabbreviation AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(bankname AS VARCHAR),
+        CAST(bankabbreviation AS VARCHAR)
+    FROM bronze_layer
+)
+
+UNION ALL
+
+-- COLUMN MISMATCH COUNT
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer t
+        ON b.id = t.id
+    WHERE
+           COALESCE(b.bankname,'') <> COALESCE(t.bankname,'')
+        OR COALESCE(b.bankabbreviation,'') <> COALESCE(t.bankabbreviation,'')
+        OR COALESCE(b.swiftbankcode,'') <> COALESCE(t.swiftbankcode,'')
+        OR COALESCE(b.tarabutproviderid,'') <> COALESCE(t.tarabutproviderid,'')
+        OR COALESCE(b.logourl,'') <> COALESCE(t.logourl,'')
+        OR COALESCE(b.isopenbankingenabled,'') <> COALESCE(t.isopenbankingenabled,'')
+        OR COALESCE(b.biccode,'') <> COALESCE(t.biccode,'')
+) x;

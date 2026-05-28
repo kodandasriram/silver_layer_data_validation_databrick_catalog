@@ -1,0 +1,263 @@
+WITH TEMP_ASSESSMENT AS (
+
+    SELECT
+        ACT.NAME                                   AS ACTIVITY_NAME,
+        ASSESSMENTSTATUS.LABEL                     AS LABEL,
+        ASS.APPLICATIONID,
+        ASS.AMENDMENTREQUESTID,
+        ACT.CLOSED,
+        ROW_NUMBER() OVER (
+            PARTITION BY ASS.APPLICATIONID, ASS.AMENDMENTREQUESTID
+            ORDER BY ACT.ID DESC
+        )                                          AS RN,
+        CASE
+            WHEN ACT.NAME LIKE 'Approve%'
+                 AND ASSESSMENTSTATUS.LABEL = 'Confirmed'
+            THEN 'Yes'
+            ELSE 'No'
+        END                                        AS APPROVAL
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_1AT_ASSESSMENT ASS
+    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSSYS_BPM_PROCESS PRO
+        ON PRO.TOP_PROCESS_ID = ASS.PROCESSID
+    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSSYS_BPM_ACTIVITY ACT
+        ON ACT.PROCESS_ID = PRO.ID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_1AT_ASSESSMENTSTATUS ASSESSMENTSTATUS
+        ON ASS.ASSESSMENTSTATUSID = ASSESSMENTSTATUS.CODE
+    WHERE ACT.NAME LIKE 'Approve%'
+      AND ASSESSMENTSTATUS.LABEL = 'Confirmed'
+
+),
+
+TEMP_PRO_SRV AS (
+
+    SELECT
+        APPLICATIONSUPPORTID,
+        ITEMPCT,
+        SERVICENAME                           AS ITEMNAME,
+        CAST(NULL AS VARCHAR)                                  AS ITEMMODELCODE,
+        CAST(NULL AS VARCHAR)                                  AS ITEMBRANDINGNAME,
+        SERVICEDESCRIPTION,
+        PRODUCTMAKE,
+        MODEL,
+        SUBSCRIPTIONSTARTDATE,
+        SUBSCRIPTIONENDDATE,
+        SUBSCRIPTIONQTDREQUEST,
+        SUBSCRIPTIONQTD,
+        SUBSCRIPTIONNUMBERPAYMENTS,
+        ITEMCOSTCURRENCYID,
+        CUSTOMERCOSTFX,
+        ITEMLINEDISCOUNTAMT,
+        ITEMCOSTVATPCT,
+        ITEMQTD,
+        ITEMQTDREQUEST,
+        ITEMQTDAVAILABLE,
+        ITEMQTDINPROGRESS,
+        ITEMQTDCLAIMED,
+        ITEMQTDDELIVERED,
+        ITEMQTYCANCELLED,
+        ITEMQUOTEDISCOUNTAMT,
+        ITEMCOSTDISCOUNTAMT,
+        ITEMCONFIGCAP,
+        ITEMVATAMT_FC,
+        ITEMVATAMT,
+        ITEMVATAMTTOTAL_FC,
+        ITEMVATAMTTOTAL,
+        ITEMCOSTUN,
+        ITEMCOSTNOVATAMT,
+        ITEMCOSTTOTAL,
+        ITEMCOSTUN_FC,
+        ITEMCOSTNOVATAMT_FC,
+        ITEMCOSTTOTAL_FC,
+        SUPPORTEDAMT,
+        SUPPORTEDAMT_FC,
+        TKSHAREUNAUTO,
+        TKSHAREUNOVR,
+        TKSHAREUN,
+        TKSHAREAUTOPCT,
+        TKSHAREACTUALPCT,
+        TKSHARETOTALAUTO,
+        TKSHARETOTALOVR,
+        TKSHARETOTAL,
+        CUSTOMERSHAREUN,
+        CUSTOMERSHARETOTAL,
+        CREATEDBY,
+        CREATEDON,
+        UPDATEDBY,
+        UPDATEDON,
+        ITEMLINEDISCOUNTAMT_FC,
+        ITEMQUOTEDISCOUNTAMT_FC,
+        ALLOWOFFLINEPAYMENT,
+        TKSHAREUNAMTAUTO,
+        TKSHAREPCT,
+        TKSHAREPCTNOVAT,
+        'SERVICE'                             AS PS_TYPE
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_IEX_SERVICE
+
+    UNION ALL
+
+    SELECT
+        APPLICATIONSUPPORTID,
+        ITEMPCT,
+        ITEMNAME,
+        ITEMMODELCODE,
+        ITEMBRANDINGNAME,
+        CAST(NULL AS VARCHAR)                                  AS SERVICEDESCRIPTION,
+        CAST(NULL AS VARCHAR)                                  AS PRODUCTMAKE,
+        CAST(NULL AS VARCHAR)                                  AS MODEL,
+        CAST(NULL AS TIMESTAMP)                                  AS SUBSCRIPTIONSTARTDATE,
+        CAST(NULL AS TIMESTAMP)                                  AS SUBSCRIPTIONENDDATE,
+        ITEMQTDREQUEST,
+        ITEMQTD,
+        CAST(NULL AS INTEGER)                                  AS SUBSCRIPTIONNUMBERPAYMENTS,
+        ITEMCOSTCURRENCYID,
+        CUSTOMERCOSTFX,
+        ITEMLINEDISCOUNTAMT,
+        ITEMCOSTVATPCT,
+        ITEMQTD,
+        ITEMQTDREQUEST,
+        ITEMQTDAVAILABLE,
+        ITEMQTDINPROGRESS,
+        ITEMQTDCLAIMED,
+        ITEMQTDDELIVERED,
+        ITEMQTYCANCELLED,
+        ITEMQUOTEDISCOUNTAMT,
+        ITEMCOSTDISCOUNTAMT,
+        ITEMCONFIGCAP,
+        ITEMVATAMTUN_FC                        AS ITEMVATAMT_FC,
+        ITEMVATAMTUN                           AS ITEMVATAMT,
+        ITEMVATAMTTOTAL_FC,
+        ITEMVATAMTTOTAL,
+        ITEMCOSTUN,
+        ITEMCOSTNOVATAMT,
+        ITEMCOSTTOTAL,
+        ITEMCOSTUN_FC,
+        ITEMCOSTNOVATAMT_FC,
+        ITEMCOSTTOTAL_FC,
+        SUPPORTEDAMT,
+        SUPPORTEDAMT_FC,
+        TKSHAREUNAUTO,
+        TKSHAREUNOVR,
+        TKSHAREUN,
+        TKSHAREAUTOPCT,
+        TKSHAREACTUALPCT,
+        TKSHARETOTALAUTO,
+        TKSHARETOTALOVR,
+        TKSHARETOTAL,
+        CUSTOMERSHAREUN,
+        CUSTOMERSHARETOTAL,
+        CREATEDBY,
+        CREATEDON,
+        UPDATEDBY,
+        UPDATEDON,
+        ITEMLINEDISCOUNTAMT_FC,
+        ITEMQUOTEDISCOUNTAMT_FC,
+        ALLOWOFFLINEPAYMENT,
+        TKSHAREUNAMTAUTO,
+        TKSHAREPCT,
+        TKSHAREPCTNOVAT,
+        'PRODUCT'                             AS PS_TYPE
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_IEX_PRODUCT
+
+),
+
+FINAL_DATA AS (
+
+    SELECT DISTINCT
+        CURRENT_TIMESTAMP + INTERVAL '3' HOUR         AS EXTRACT_DATE,
+        APPSUP.APPLICATIONID                          AS ID_APPLICATION,
+        APP.REFERENCENUMBER                           AS APPLICATION_NO,
+        APPSUP.AMENDMENTREQUESTID                     AS ID_AMENDMENT,
+        CASE
+            WHEN APPSUP.CREATEDBY IN ('NEOT1 Migration User', 'NEOT1 Migration User_2')
+            THEN 'OUTSYSTEM 2.0 (MIGRATED)'
+            ELSE 'OUTSYSTEM 2.0'
+        END                                           AS SOURCE_SYSTEM,
+        APPSUP.ID                                     AS ID_APPLICATION_SUPPORT,
+        APP.SUBMITTEDON + INTERVAL '3' HOUR           AS SUBMITTED_ON_APPLICATION,
+        AMDMENT.SUBMITTEDON + INTERVAL '3' HOUR       AS SUBMITTED_ON_AMENDMENT,
+        CUS.NAMEEN                                    AS COMMERCIAL_NAME,
+        CMP.CODE                                      AS CR_LICENSE_NO,
+        PS.ITEMNAME                                   AS ITEM_NAME,
+        PS.PS_TYPE,
+        PS.APPLICATIONSUPPORTID,
+        PS.ITEMPCT,
+        PS.ITEMMODELCODE,
+        PS.ITEMBRANDINGNAME,
+        PS.SERVICEDESCRIPTION,
+        PS.PRODUCTMAKE,
+        PS.MODEL,
+        PS.SUBSCRIPTIONSTARTDATE,
+        PS.SUBSCRIPTIONENDDATE,
+        PS.SUBSCRIPTIONQTDREQUEST,
+        PS.SUBSCRIPTIONQTD,
+        PS.SUBSCRIPTIONNUMBERPAYMENTS,
+        PS.ITEMCOSTCURRENCYID,
+        PS.CUSTOMERCOSTFX,
+        PS.ITEMLINEDISCOUNTAMT,
+        PS.ITEMCOSTVATPCT,
+        PS.ITEMQTD,
+        PS.ITEMQTDREQUEST,
+        PS.ITEMQTDAVAILABLE,
+        PS.ITEMQTDINPROGRESS,
+        PS.ITEMQTDCLAIMED,
+        PS.ITEMQTDDELIVERED,
+        PS.ITEMQTYCANCELLED,
+        PS.ITEMQUOTEDISCOUNTAMT,
+        PS.ITEMCOSTDISCOUNTAMT,
+        PS.ITEMCONFIGCAP,
+        PS.ITEMVATAMT_FC,
+        PS.ITEMVATAMT,
+        PS.ITEMVATAMTTOTAL_FC,
+        PS.ITEMVATAMTTOTAL,
+        PS.ITEMCOSTUN,
+        PS.ITEMCOSTNOVATAMT,
+        PS.ITEMCOSTTOTAL,
+        PS.ITEMCOSTUN_FC,
+        PS.ITEMCOSTNOVATAMT_FC,
+        PS.ITEMCOSTTOTAL_FC,
+        PS.SUPPORTEDAMT,
+        PS.SUPPORTEDAMT_FC,
+        PS.TKSHAREUNAUTO,
+        PS.TKSHAREUNOVR,
+        PS.TKSHAREUN,
+        PS.TKSHAREAUTOPCT,
+        PS.TKSHAREACTUALPCT,
+        PS.TKSHARETOTALAUTO,
+        PS.TKSHARETOTALOVR,
+        PS.TKSHARETOTAL,
+        PS.CUSTOMERSHAREUN,
+        PS.CUSTOMERSHARETOTAL,
+        PS.CREATEDBY,
+        PS.CREATEDON,
+        PS.UPDATEDBY,
+        PS.UPDATEDON,
+        PS.ITEMLINEDISCOUNTAMT_FC,
+        PS.ITEMQUOTEDISCOUNTAMT_FC,
+        PS.ALLOWOFFLINEPAYMENT,
+        PS.TKSHAREUNAMTAUTO,
+        PS.TKSHAREPCT,
+        PS.TKSHAREPCTNOVAT,
+        CAST(current_timestamp AT TIME ZONE 'UTC' AS timestamp) AS DBT_UPDATED_AT
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_2DA_APPLICATIONSUPPORT APPSUP
+    INNER JOIN TEMP_PRO_SRV PS
+        ON PS.APPLICATIONSUPPORTID = APPSUP.ID
+    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_APPLICATION APP
+        ON APP.ID = APPSUP.APPLICATIONID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_AMENDMENTREQUEST AMDMENT
+        ON AMDMENT.ID = APPSUP.AMENDMENTREQUESTID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
+        ON APP.ID = APPCUS.APPLICATIONID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
+        ON APPCUS.CUSTOMERPROFILEID = CUSPROF.ID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMER CUS
+        ON CUSPROF.CUSTOMERID = CUS.ID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_COMPANY CMP
+        ON CUS.ID = CMP.ID
+    LEFT JOIN TEMP_ASSESSMENT ASSES_AMED
+        ON ASSES_AMED.AMENDMENTREQUESTID = APPSUP.AMENDMENTREQUESTID
+       AND (ASSES_AMED.RN = 1 OR ASSES_AMED.RN IS NULL)
+
+)
+
+SELECT *
+FROM FINAL_DATA

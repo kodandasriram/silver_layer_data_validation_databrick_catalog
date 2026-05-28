@@ -1,0 +1,871 @@
+-- Compare bronze-layer query output with silver-layer table output for iban_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to VARCHAR.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\union of os2_os1_mis\iban_base_os2_os1_mis_union_bronze_layer.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\iban_base_silver_layer.sql
+
+WITH
+bronze_layer AS (
+-- Bronze-layer UNION ALL for iban_base across OS2, OS1, and MIS.
+-- Output column order follows the dbt model: iban_base_union all.sql.
+-- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+
+WITH iban_base_mis_source AS (
+WITH option_set_values AS (
+    SELECT
+        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS VARCHAR) AS option_key,
+        max(sm.value) AS option_value
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".STRINGMAP sm
+    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".ENTITYLOGICALVIEW elv
+        ON sm.objecttypecode = elv.objecttypecode
+    WHERE sm.attributevalue IS NOT NULL
+      AND sm.value IS NOT NULL
+    GROUP BY
+        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS VARCHAR)
+),
+option_set_map AS (
+    SELECT map_agg(option_key, option_value) AS option_values
+    FROM option_set_values
+)
+/*
+============================================================================
+silver_iban_mis.sql
+============================================================================
+Per-source intermediate Silver model for the IBAN domain â€” MIS only.
+
+Source: tmkn_iban (single table, IBAN bank account reference data)
+
+Reference SPs:
+  - RPT-029_Company                   (joins iban via tmkn_iban_x = company)
+  - RPT-030_Business_Development      (similar pattern)
+  - BCApplications                    (similar pattern)
+
+The IBAN domain is a single-table reference domain. tmkn_iban holds bank
+account records that are linked from companies and applications. There is
+no internal entity hierarchy to join â€” the table sits flat.
+
+In the source SPs, tmkn_iban is JOINed FROM other domain tables (Company,
+BD Application) via the iban FK. Here we expose it standalone â€” downstream
+domain tables that need iban details will JOIN to this Silver table at
+Gold/AGG time.
+
+Cleansing only â€” no business logic.
+============================================================================
+*/
+
+SELECT
+    'tmkn_iban' AS mis_source_table,
+
+    -- Identifiers
+    CAST(iban.tmkn_ibanid AS VARCHAR)                    AS iban_id,
+    iban.tmkn_name                                       AS iban_name,
+
+    -- IBAN details
+    --iban.tmkn_ibannumber                                 AS iban_number,
+    --iban.tmkn_bankname                                   AS bank_name,
+    --iban.tmkn_accountholder                              AS account_holder,
+    --iban.tmkn_branchname                                 AS branch_name,
+    CAST(NULL AS VARCHAR) AS iban_number,
+    CAST(NULL AS VARCHAR) AS bank_name,
+    CAST(NULL AS VARCHAR) AS account_holder,
+    CAST(NULL AS VARCHAR) AS branch_name,
+    CAST(NULL AS VARCHAR) AS owner_name,
+    -- Standard option-set decodes
+    CASE WHEN iban.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_iban') || '|' || lower('statuscode') || '|' || CAST(iban.statuscode AS VARCHAR)) END  AS status_reason,
+    CASE WHEN iban.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_iban') || '|' || lower('statecode') || '|' || CAST(iban.statecode AS VARCHAR)) END   AS state,
+
+    -- Owner / audit
+    --iban.owneridname                                     AS owner_name,
+    iban.createdby                                  AS created_by,
+    iban.modifiedby                                  AS modified_by,
+    iban.createdon                                       AS created_on,
+    iban.modifiedon                                      AS modified_on,
+
+    -- Standard trailing audit columns
+    'MIS' AS source_system_name,
+    FALSE AS is_deleted,
+    CURRENT_DATE AS report_date,
+    CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
+
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_IBANBASE iban
+),
+iban_base_os1_source AS (
+/*
+============================================================================
+silver_iban_os1.sql
+============================================================================
+Per-source intermediate Silver model for the IBAN domain â€” OS1 only.
+
+Source: OSUSR_PX1_IBAN (anchor)
+Reference SP: RPT-186_neoTamkeen_IBAN
+
+Lookups joined inline:
+  - OSUSR_PX1_IBANTYPE        â†’ IBAN type label (e.g., 'Personal', 'Company')
+  - OSUSR_PX1_BANK            â†’ bank name
+  - OSUSR_PX1_IBANSTATUS      â†’ workflow status label
+  - ossys_user (Ã—2)           â†’ created-by / updated-by user names
+  - OSUSR_MKZ_USEREXTENSION   â†’ CPR number for the creating user
+
+OS1 lookup tables don't follow the CRM option-set pattern â€” they are standard
+reference tables joined directly. No decode_optionset macro needed for OS1.
+
+Sentinel handling: OS1 uses '01-01-1900' as the sentinel default date â€” null
+those out for the date columns to avoid downstream confusion.
+
+Cleansing only â€” no business logic. Cross-domain references (e.g., the
+USERID FK to ossys_user) are preserved as columns, but the user details are
+denormalised inline because RPT-186 already does that.
+============================================================================
+*/
+
+SELECT
+    'OSUSR_PX1_IBAN' AS os1_source_table,
+
+    -- Identifiers
+    ibn.ID                                                                AS iban_id,
+    ibn.IBANNUMBER                                                        AS iban_number,
+    ibn.ACCOUNTNAME                                                       AS account_name,
+
+    -- Lookups (decoded labels)
+    --ibntyp.LABEL                                                          AS iban_type,
+    --bnk.BANKNAME                                                          AS bank_name,
+    --ibnSts.LABEL                                                          AS workflow_status,
+    CAST(NULL AS VARCHAR) AS iban_type,
+    CAST(NULL AS VARCHAR) AS bank_name,
+    CAST(NULL AS VARCHAR) AS workflow_status,
+
+    -- Foreign keys preserved for downstream re-joining
+    ibn.IBANTYPEID                                                        AS iban_type_id,
+    ibn.BANKID                                                            AS bank_id,
+    ibn.IBANSTATUSID                                                      AS iban_status_id,
+    ibn.CREATEDBY                                                         AS created_by_user_id,
+    ibn.UPDATEDBY                                                         AS updated_by_user_id,
+
+    -- Audit (denormalised user names from ossys_user)
+    usr_create.NAME                                                       AS created_by,
+    usr_update.NAME                                                       AS modified_by,
+    UsrExt.CPR_NUMBER                                                     AS created_by_cpr,
+
+    -- Dates with OS1 sentinel handling
+    CASE WHEN ibn.CREATEDON = DATE '1900-01-01' THEN NULL
+         ELSE ibn.CREATEDON END                                           AS created_on,
+    CASE WHEN ibn.UPDATEDON = DATE '1900-01-01' THEN NULL
+         ELSE ibn.UPDATEDON END                                           AS modified_on,
+
+    -- Flags
+    --CASE WHEN ibn.ISDEFAULT = 1 THEN TRUE ELSE FALSE END                  AS is_default,
+	ibn.ISDEFAULT AS is_default,
+
+    -- Standard trailing audit columns
+    'NEO1' AS source_system_name,
+    FALSE AS is_deleted,
+    CURRENT_DATE AS report_date,
+    CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
+
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_IBAN ibn
+-- INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_IBANTYPE ibntyp
+--        ON ibntyp.ID = ibn.IBANTYPEID
+-- INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_BANK bnk
+--        ON bnk.ID = ibn.BANKID
+-- INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_IBANSTATUS ibnSts
+--        ON ibnSts.ID = ibn.IBANSTATUSID
+INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSSYS_USER usr_create
+       ON usr_create.ID = ibn.CREATEDBY
+INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSSYS_USER usr_update
+       ON usr_update.ID = ibn.UPDATEDBY
+LEFT JOIN  dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_MKZ_USEREXTENSION UsrExt
+       ON UsrExt.USERID = usr_create.ID
+),
+iban_base_os2_source AS (
+-- Standalone Trino SQL converted from dbt model.
+/*
+ =================================================================================================
+
+Name        : IBAN_FINANCE_NTP
+Description : This model extracts and transforms IBAN and finance-related attributes
+              from the NEO2 (NTP) source system Bronze Layer and loads into the
+              IBAN_FINANCE target table as part of the Silver Layer data pipeline.
+              It supports incremental loading with merge strategy and implements
+              soft delete handling using a post-hook.
+
+Source Tables : neo2.OSUSR_TLV_IBAN
+                neo2.OSUSR_TLV_BANK
+                neo2.OSUSR_TLV_IBANSTATUS
+                neo2.OSUSR_ZMZ_CUSTOMERPROFILE
+                neo2.OSUSR_ZMZ_CUSTOMER
+                neo2.OSUSR_ZMZ_CUSTOMERTYPE
+                neo2.OSUSR_ZMZ_INDIVIDUAL
+                neo2.OSUSR_ZMZ_COMPANY
+
+Target Table : IBAN_FINANCE
+Load Type    : Incremental Load (Merge + Soft Delete)
+Materialized : incremental
+Format       : PARQUET
+Tags         : neo2, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-11 |    Abitha     | Initial version
+
+================================================================================================= 
+*/
+WITH CTE_IBAN_FINANCE AS (
+    SELECT
+        IBAN.id,
+        IBAN.ibannumber,
+        IBST.LABEL                                                        AS iban_status,
+        IBAN.customerprofileid,
+        IBAN.portaluserid,
+        IBAN.ibanstatusid,
+        IBAN.bankid,
+        IBAN.docchecklistguid,
+        IBAN.updatedby,
+        IBAN.isdefault,
+        IBAN.isverifiedbytarabut,
+        IBAN.issalaryiban,
+        IBAN.externalbankid,
+        IBAN.currency,
+        IBAN.deactivatedon,
+        IBAN.docdeactivateguid,
+        IBAN.reasonsfordeactivation,
+        CASE
+            WHEN CusType.LABEL = 'Individual' THEN IND.CPRNUMBER
+            ELSE CMP.CODE
+        END                                                               AS payee_cpr_cr_license,
+        CUS.NAMEEN                                                        AS customer_name_commercial_name_english,
+        IBAN.EMAIL                                                        AS email,
+        CONCAT('+', IBAN.MOBILECOUNTRYPREFIX, ' ', IBAN.MOBILENUMBER)    AS mobile_number,
+        IBAN.ACCOUNTNAME                                                  AS account_name,
+        BANK.BANKNAME                                                     AS bank_name,
+        CASE
+            WHEN IBAN.CREATEDON = CAST('1900-01-01 00:00:00.000' AS TIMESTAMP)
+            THEN NULL
+            ELSE IBAN.CREATEDON + INTERVAL '3' HOUR
+        END                                                               AS createdon,
+        IBAN.CREATEDBY                                                    AS created_by,
+        BANK.SWIFTBANKCODE                                                AS swift_code,
+        BANK.BICCODE                                                      AS bic_code,
+        CusType.LABEL                                                     AS customer_type,
+        IBAN.UPDATEDON                                                    AS updatedon,
+        CASE
+            WHEN IBAN.IBANSTATUSID = 'VER' THEN IBAN.UPDATEDON
+            ELSE NULL
+        END                                                               AS verified_on,
+        ROW_NUMBER() OVER (PARTITION BY IBAN.ID ORDER BY IBAN.CREATEDON DESC NULLS LAST, IBAN.UPDATEDON DESC NULLS LAST)                                                              AS rnk,
+        FALSE                                                             AS is_deleted,
+        'NEO2'                                                            AS source_system_name,
+        CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP)          AS dbt_updated_at
+
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_TLV_IBAN                          IBAN
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_TLV_BANK                     BANK
+           ON BANK.ID = IBAN.BANKID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_TLV_IBANSTATUS               IBST
+           ON IBAN.IBANSTATUSID = IBST.CODE
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMERPROFILE          CUSPROF
+           ON CUSPROF.ID = IBAN.CUSTOMERPROFILEID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMER                 CUS
+           ON CUSPROF.CUSTOMERID = CUS.ID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMERTYPE             CusType
+           ON CusType.CODE = CUS.CUSTOMERTYPEID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_INDIVIDUAL               IND
+           ON CUSPROF.CUSTOMERID = IND.ID
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_COMPANY                  CMP
+           ON CUSPROF.CUSTOMERID = CMP.ID
+)
+
+SELECT
+    TRY_CAST(NULLIF(CAST(id AS VARCHAR), '') AS BIGINT)                                          AS id,
+    ibannumber,
+    iban_status,
+    customerprofileid,
+    portaluserid,
+    ibanstatusid,
+    bankid,
+    docchecklistguid,
+    updatedby,
+    isdefault,
+    isverifiedbytarabut,
+    issalaryiban,
+    externalbankid,
+    currency,
+    deactivatedon,
+    docdeactivateguid,
+    reasonsfordeactivation,
+    payee_cpr_cr_license,
+    customer_name_commercial_name_english,
+    email,
+    mobile_number,
+    account_name,
+    bank_name,
+    TRY_CAST(NULLIF(CAST(createdon AS VARCHAR), '') AS TIMESTAMP)                           AS createdon,
+    created_by,
+    swift_code,
+    bic_code,
+    customer_type,
+    TRY_CAST(NULLIF(CAST(updatedon AS VARCHAR), '') AS TIMESTAMP)                               AS updatedon,
+    TRY_CAST(NULLIF(CAST(verified_on AS VARCHAR), '') AS TIMESTAMP)                               AS verified_on,
+    is_deleted,
+    UPPER(NULLIF(TRIM(CAST(source_system_name AS VARCHAR)), ''))                         AS source_system_name,
+    TRY_CAST(NULLIF(CAST(dbt_updated_at AS VARCHAR), '') AS TIMESTAMP)                            AS dbt_updated_at
+
+FROM CTE_IBAN_FINANCE
+WHERE rnk = 1
+)
+select
+    -- source markers
+    mis_source_table,
+    cast(null as varchar) as os1_source_table,
+
+    -- common identifiers / iban fields
+    cast(iban_id as varchar) as iban_id,
+    iban_number,
+    bank_name,
+    created_by,
+    modified_by,
+    created_on,
+    modified_on,
+
+    -- mis columns
+    iban_name,
+    account_holder,
+    branch_name,
+    status_reason,
+    state,
+    owner_name,
+
+    -- os1 columns
+    cast(null as varchar) as account_name,
+    cast(null as varchar) as iban_type,
+    cast(null as varchar) as workflow_status,
+    cast(null as bigint) as iban_type_id,
+    cast(null as bigint) as bank_id,
+    cast(null as bigint) as iban_status_id,
+    cast(null as bigint) as created_by_user_id,
+    cast(null as bigint) as updated_by_user_id,
+    cast(null as varchar) as created_by_cpr,
+    cast(null as boolean) as is_default,
+
+    -- os2 columns
+    cast(null as bigint) as customerprofileid,
+    cast(null as bigint) as portaluserid,
+    cast(null as varchar) as os2_ibanstatusid,
+    cast(null as varchar) as docchecklistguid,
+    cast(null as varchar) as os2_updatedby,
+    cast(null as boolean) as isverifiedbytarabut,
+    cast(null as boolean) as issalaryiban,
+    cast(null as bigint) as externalbankid,
+    cast(null as varchar) as currency,
+    cast(null as timestamp) as deactivatedon,
+    cast(null as varchar) as docdeactivateguid,
+    cast(null as varchar) as reasonsfordeactivation,
+    cast(null as varchar) as payee_cpr_cr_license,
+    cast(null as varchar) as customer_name_commercial_name_english,
+    cast(null as varchar) as email,
+    cast(null as varchar) as mobile_number,
+    cast(null as varchar) as swift_code,
+    cast(null as varchar) as bic_code,
+    cast(null as varchar) as customer_type,
+    cast(null as timestamp) as verified_on,
+
+    source_system_name,
+    is_deleted,
+    report_date,
+    dbt_updated_at,
+    cast(created_on as timestamp) as createdon,
+    cast(null as timestamp) as updatedon
+
+from iban_base_mis_source
+
+union all
+
+select
+    -- source markers
+    cast(null as varchar) as mis_source_table,
+    os1_source_table,
+
+    -- common identifiers / iban fields
+    cast(iban_id as varchar) as iban_id,
+    iban_number,
+    bank_name,
+    created_by,
+    modified_by,
+    created_on,
+    modified_on,
+
+    -- mis placeholders
+    cast(null as varchar) as iban_name,
+    cast(null as varchar) as account_holder,
+    cast(null as varchar) as branch_name,
+    cast(null as varchar) as status_reason,
+    cast(null as varchar) as state,
+    cast(null as varchar) as owner_name,
+
+    -- os1 columns
+    account_name,
+    iban_type,
+    workflow_status,
+    iban_type_id,
+    bank_id,
+    iban_status_id,
+    created_by_user_id,
+    updated_by_user_id,
+    created_by_cpr,
+    is_default,
+
+    -- os2 placeholders
+    cast(null as bigint) as customerprofileid,
+    cast(null as bigint) as portaluserid,
+    cast(null as varchar) as os2_ibanstatusid,
+    cast(null as varchar) as docchecklistguid,
+    cast(null as varchar) as os2_updatedby,
+    cast(null as boolean) as isverifiedbytarabut,
+    cast(null as boolean) as issalaryiban,
+    cast(null as bigint) as externalbankid,
+    cast(null as varchar) as currency,
+    cast(null as timestamp) as deactivatedon,
+    cast(null as varchar) as docdeactivateguid,
+    cast(null as varchar) as reasonsfordeactivation,
+    cast(null as varchar) as payee_cpr_cr_license,
+    cast(null as varchar) as customer_name_commercial_name_english,
+    cast(null as varchar) as email,
+    cast(null as varchar) as mobile_number,
+    cast(null as varchar) as swift_code,
+    cast(null as varchar) as bic_code,
+    cast(null as varchar) as customer_type,
+    cast(null as timestamp) as verified_on,
+
+    source_system_name,
+    is_deleted,
+    report_date,
+    dbt_updated_at,
+    cast(created_on as timestamp) as createdon,
+    cast(null as timestamp) as updatedon
+
+from iban_base_os1_source
+
+union all
+
+select
+    -- source markers
+    cast(null as varchar) as mis_source_table,
+    cast(null as varchar) as os1_source_table,
+
+    -- common identifiers / iban fields
+    cast(id as varchar) as iban_id,
+    ibannumber as iban_number,
+    bank_name as bank_name,
+    created_by as created_by,
+    cast(updatedby as varchar) as modified_by,
+    createdon as created_on,
+    updatedon as modified_on,
+
+    -- mis placeholders
+    cast(null as varchar) as iban_name,
+    cast(null as varchar) as account_holder,
+    cast(null as varchar) as branch_name,
+    cast(null as varchar) as status_reason,
+    cast(null as varchar) as state,
+    cast(null as varchar) as owner_name,
+
+    -- os1 / common columns
+    account_name as account_name,
+    cast(null as varchar) as iban_type,
+    iban_status as workflow_status,
+    cast(null as bigint) as iban_type_id,
+    bankid as bank_id,
+    cast(null as bigint) as iban_status_id,
+    cast(null as bigint) as created_by_user_id,
+    cast(null as bigint) as updated_by_user_id,
+    cast(null as varchar) as created_by_cpr,
+    isdefault as is_default,
+
+    -- os2 columns
+    customerprofileid as customerprofileid,
+    portaluserid as portaluserid,
+    cast(ibanstatusid as varchar) as os2_ibanstatusid,
+    docchecklistguid as docchecklistguid,
+    cast(updatedby as varchar) as os2_updatedby,
+    isverifiedbytarabut as isverifiedbytarabut,
+    issalaryiban as issalaryiban,
+    externalbankid as externalbankid,
+    currency as currency,
+    deactivatedon as deactivatedon,
+    docdeactivateguid as docdeactivateguid,
+    reasonsfordeactivation as reasonsfordeactivation,
+    payee_cpr_cr_license as payee_cpr_cr_license,
+    customer_name_commercial_name_english as customer_name_commercial_name_english,
+    email as email,
+    mobile_number as mobile_number,
+    swift_code as swift_code,
+    bic_code as bic_code,
+    customer_type as customer_type,
+    verified_on as verified_on,
+
+    source_system_name as source_system_name,
+    is_deleted as is_deleted,
+    current_date as report_date,
+    dbt_updated_at,
+    createdon,
+    updatedon
+from iban_base_os2_source
+),
+
+silver_layer AS (
+SELECT
+    mis_source_table,
+    os1_source_table,
+    iban_id,
+    iban_number,
+    bank_name,
+    created_by,
+    modified_by,
+    created_on,
+    modified_on,
+    iban_name,
+    account_holder,
+    branch_name,
+    status_reason,
+    state,
+    owner_name,
+    account_name,
+    iban_type,
+    workflow_status,
+    iban_type_id,
+    bank_id,
+    iban_status_id,
+    created_by_user_id,
+    updated_by_user_id,
+    created_by_cpr,
+    is_default,
+    customerprofileid,
+    portaluserid,
+    os2_ibanstatusid,
+    docchecklistguid,
+    os2_updatedby,
+    isverifiedbytarabut,
+    issalaryiban,
+    externalbankid,
+    currency,
+    deactivatedon,
+    docdeactivateguid,
+    reasonsfordeactivation,
+    payee_cpr_cr_license,
+    customer_name_commercial_name_english,
+    email,
+    mobile_number,
+    swift_code,
+    bic_code,
+    customer_type,
+    verified_on,
+    source_system_name,
+    is_deleted,
+    report_date,
+    dbt_updated_at,
+    createdon,
+    updatedon
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".iban_base
+),
+
+bronze_columns(column_position, column_name) AS (
+    VALUES
+        (1, 'mis_source_table'),
+        (2, 'os1_source_table'),
+        (3, 'iban_id'),
+        (4, 'iban_number'),
+        (5, 'bank_name'),
+        (6, 'created_by'),
+        (7, 'modified_by'),
+        (8, 'created_on'),
+        (9, 'modified_on'),
+        (10, 'iban_name'),
+        (11, 'account_holder'),
+        (12, 'branch_name'),
+        (13, 'status_reason'),
+        (14, 'state'),
+        (15, 'owner_name'),
+        (16, 'account_name'),
+        (17, 'iban_type'),
+        (18, 'workflow_status'),
+        (19, 'iban_type_id'),
+        (20, 'bank_id'),
+        (21, 'iban_status_id'),
+        (22, 'created_by_user_id'),
+        (23, 'updated_by_user_id'),
+        (24, 'created_by_cpr'),
+        (25, 'is_default'),
+        (26, 'customerprofileid'),
+        (27, 'portaluserid'),
+        (28, 'os2_ibanstatusid'),
+        (29, 'docchecklistguid'),
+        (30, 'os2_updatedby'),
+        (31, 'isverifiedbytarabut'),
+        (32, 'issalaryiban'),
+        (33, 'externalbankid'),
+        (34, 'currency'),
+        (35, 'deactivatedon'),
+        (36, 'docdeactivateguid'),
+        (37, 'reasonsfordeactivation'),
+        (38, 'payee_cpr_cr_license'),
+        (39, 'customer_name_commercial_name_english'),
+        (40, 'email'),
+        (41, 'mobile_number'),
+        (42, 'swift_code'),
+        (43, 'bic_code'),
+        (44, 'customer_type'),
+        (45, 'verified_on'),
+        (46, 'source_system_name'),
+        (47, 'is_deleted'),
+        (48, 'report_date'),
+        (49, 'dbt_updated_at'),
+        (50, 'createdon'),
+        (51, 'updatedon')
+),
+
+silver_columns(column_position, column_name) AS (
+    VALUES
+        (1, 'mis_source_table'),
+        (2, 'os1_source_table'),
+        (3, 'iban_id'),
+        (4, 'iban_number'),
+        (5, 'bank_name'),
+        (6, 'created_by'),
+        (7, 'modified_by'),
+        (8, 'created_on'),
+        (9, 'modified_on'),
+        (10, 'iban_name'),
+        (11, 'account_holder'),
+        (12, 'branch_name'),
+        (13, 'status_reason'),
+        (14, 'state'),
+        (15, 'owner_name'),
+        (16, 'account_name'),
+        (17, 'iban_type'),
+        (18, 'workflow_status'),
+        (19, 'iban_type_id'),
+        (20, 'bank_id'),
+        (21, 'iban_status_id'),
+        (22, 'created_by_user_id'),
+        (23, 'updated_by_user_id'),
+        (24, 'created_by_cpr'),
+        (25, 'is_default'),
+        (26, 'customerprofileid'),
+        (27, 'portaluserid'),
+        (28, 'os2_ibanstatusid'),
+        (29, 'docchecklistguid'),
+        (30, 'os2_updatedby'),
+        (31, 'isverifiedbytarabut'),
+        (32, 'issalaryiban'),
+        (33, 'externalbankid'),
+        (34, 'currency'),
+        (35, 'deactivatedon'),
+        (36, 'docdeactivateguid'),
+        (37, 'reasonsfordeactivation'),
+        (38, 'payee_cpr_cr_license'),
+        (39, 'customer_name_commercial_name_english'),
+        (40, 'email'),
+        (41, 'mobile_number'),
+        (42, 'swift_code'),
+        (43, 'bic_code'),
+        (44, 'customer_type'),
+        (45, 'verified_on'),
+        (46, 'source_system_name'),
+        (47, 'is_deleted'),
+        (48, 'report_date'),
+        (49, 'dbt_updated_at'),
+        (50, 'createdon'),
+        (51, 'updatedon')
+),
+
+bronze_normalized AS (
+    SELECT
+        CAST("mis_source_table" AS VARCHAR) AS "mis_source_table",
+        CAST("os1_source_table" AS VARCHAR) AS "os1_source_table",
+        CAST("iban_id" AS VARCHAR) AS "iban_id",
+        CAST("iban_number" AS VARCHAR) AS "iban_number",
+        CAST("bank_name" AS VARCHAR) AS "bank_name",
+        CAST("created_by" AS VARCHAR) AS "created_by",
+        CAST("modified_by" AS VARCHAR) AS "modified_by",
+        CAST("created_on" AS VARCHAR) AS "created_on",
+        CAST("modified_on" AS VARCHAR) AS "modified_on",
+        CAST("iban_name" AS VARCHAR) AS "iban_name",
+        CAST("account_holder" AS VARCHAR) AS "account_holder",
+        CAST("branch_name" AS VARCHAR) AS "branch_name",
+        CAST("status_reason" AS VARCHAR) AS "status_reason",
+        CAST("state" AS VARCHAR) AS "state",
+        CAST("owner_name" AS VARCHAR) AS "owner_name",
+        CAST("account_name" AS VARCHAR) AS "account_name",
+        CAST("iban_type" AS VARCHAR) AS "iban_type",
+        CAST("workflow_status" AS VARCHAR) AS "workflow_status",
+        CAST("iban_type_id" AS VARCHAR) AS "iban_type_id",
+        CAST("bank_id" AS VARCHAR) AS "bank_id",
+        CAST("iban_status_id" AS VARCHAR) AS "iban_status_id",
+        CAST("created_by_user_id" AS VARCHAR) AS "created_by_user_id",
+        CAST("updated_by_user_id" AS VARCHAR) AS "updated_by_user_id",
+        CAST("created_by_cpr" AS VARCHAR) AS "created_by_cpr",
+        CAST("is_default" AS VARCHAR) AS "is_default",
+        CAST("customerprofileid" AS VARCHAR) AS "customerprofileid",
+        CAST("portaluserid" AS VARCHAR) AS "portaluserid",
+        CAST("os2_ibanstatusid" AS VARCHAR) AS "os2_ibanstatusid",
+        CAST("docchecklistguid" AS VARCHAR) AS "docchecklistguid",
+        CAST("os2_updatedby" AS VARCHAR) AS "os2_updatedby",
+        CAST("isverifiedbytarabut" AS VARCHAR) AS "isverifiedbytarabut",
+        CAST("issalaryiban" AS VARCHAR) AS "issalaryiban",
+        CAST("externalbankid" AS VARCHAR) AS "externalbankid",
+        CAST("currency" AS VARCHAR) AS "currency",
+        CAST("deactivatedon" AS VARCHAR) AS "deactivatedon",
+        CAST("docdeactivateguid" AS VARCHAR) AS "docdeactivateguid",
+        CAST("reasonsfordeactivation" AS VARCHAR) AS "reasonsfordeactivation",
+        CAST("payee_cpr_cr_license" AS VARCHAR) AS "payee_cpr_cr_license",
+        CAST("customer_name_commercial_name_english" AS VARCHAR) AS "customer_name_commercial_name_english",
+        CAST("email" AS VARCHAR) AS "email",
+        CAST("mobile_number" AS VARCHAR) AS "mobile_number",
+        CAST("swift_code" AS VARCHAR) AS "swift_code",
+        CAST("bic_code" AS VARCHAR) AS "bic_code",
+        CAST("customer_type" AS VARCHAR) AS "customer_type",
+        CAST("verified_on" AS VARCHAR) AS "verified_on",
+        CAST("source_system_name" AS VARCHAR) AS "source_system_name",
+        CAST("is_deleted" AS VARCHAR) AS "is_deleted",
+        CAST("report_date" AS VARCHAR) AS "report_date",
+        CAST("dbt_updated_at" AS VARCHAR) AS "dbt_updated_at",
+        CAST("createdon" AS VARCHAR) AS "createdon",
+        CAST("updatedon" AS VARCHAR) AS "updatedon"
+    FROM bronze_layer
+),
+
+silver_normalized AS (
+    SELECT
+        CAST("mis_source_table" AS VARCHAR) AS "mis_source_table",
+        CAST("os1_source_table" AS VARCHAR) AS "os1_source_table",
+        CAST("iban_id" AS VARCHAR) AS "iban_id",
+        CAST("iban_number" AS VARCHAR) AS "iban_number",
+        CAST("bank_name" AS VARCHAR) AS "bank_name",
+        CAST("created_by" AS VARCHAR) AS "created_by",
+        CAST("modified_by" AS VARCHAR) AS "modified_by",
+        CAST("created_on" AS VARCHAR) AS "created_on",
+        CAST("modified_on" AS VARCHAR) AS "modified_on",
+        CAST("iban_name" AS VARCHAR) AS "iban_name",
+        CAST("account_holder" AS VARCHAR) AS "account_holder",
+        CAST("branch_name" AS VARCHAR) AS "branch_name",
+        CAST("status_reason" AS VARCHAR) AS "status_reason",
+        CAST("state" AS VARCHAR) AS "state",
+        CAST("owner_name" AS VARCHAR) AS "owner_name",
+        CAST("account_name" AS VARCHAR) AS "account_name",
+        CAST("iban_type" AS VARCHAR) AS "iban_type",
+        CAST("workflow_status" AS VARCHAR) AS "workflow_status",
+        CAST("iban_type_id" AS VARCHAR) AS "iban_type_id",
+        CAST("bank_id" AS VARCHAR) AS "bank_id",
+        CAST("iban_status_id" AS VARCHAR) AS "iban_status_id",
+        CAST("created_by_user_id" AS VARCHAR) AS "created_by_user_id",
+        CAST("updated_by_user_id" AS VARCHAR) AS "updated_by_user_id",
+        CAST("created_by_cpr" AS VARCHAR) AS "created_by_cpr",
+        CAST("is_default" AS VARCHAR) AS "is_default",
+        CAST("customerprofileid" AS VARCHAR) AS "customerprofileid",
+        CAST("portaluserid" AS VARCHAR) AS "portaluserid",
+        CAST("os2_ibanstatusid" AS VARCHAR) AS "os2_ibanstatusid",
+        CAST("docchecklistguid" AS VARCHAR) AS "docchecklistguid",
+        CAST("os2_updatedby" AS VARCHAR) AS "os2_updatedby",
+        CAST("isverifiedbytarabut" AS VARCHAR) AS "isverifiedbytarabut",
+        CAST("issalaryiban" AS VARCHAR) AS "issalaryiban",
+        CAST("externalbankid" AS VARCHAR) AS "externalbankid",
+        CAST("currency" AS VARCHAR) AS "currency",
+        CAST("deactivatedon" AS VARCHAR) AS "deactivatedon",
+        CAST("docdeactivateguid" AS VARCHAR) AS "docdeactivateguid",
+        CAST("reasonsfordeactivation" AS VARCHAR) AS "reasonsfordeactivation",
+        CAST("payee_cpr_cr_license" AS VARCHAR) AS "payee_cpr_cr_license",
+        CAST("customer_name_commercial_name_english" AS VARCHAR) AS "customer_name_commercial_name_english",
+        CAST("email" AS VARCHAR) AS "email",
+        CAST("mobile_number" AS VARCHAR) AS "mobile_number",
+        CAST("swift_code" AS VARCHAR) AS "swift_code",
+        CAST("bic_code" AS VARCHAR) AS "bic_code",
+        CAST("customer_type" AS VARCHAR) AS "customer_type",
+        CAST("verified_on" AS VARCHAR) AS "verified_on",
+        CAST("source_system_name" AS VARCHAR) AS "source_system_name",
+        CAST("is_deleted" AS VARCHAR) AS "is_deleted",
+        CAST("report_date" AS VARCHAR) AS "report_date",
+        CAST("dbt_updated_at" AS VARCHAR) AS "dbt_updated_at",
+        CAST("createdon" AS VARCHAR) AS "createdon",
+        CAST("updatedon" AS VARCHAR) AS "updatedon"
+    FROM silver_layer
+),
+
+bronze_minus_silver AS (
+    SELECT * FROM bronze_normalized
+    EXCEPT ALL
+    SELECT * FROM silver_normalized
+),
+
+silver_minus_bronze AS (
+    SELECT * FROM silver_normalized
+    EXCEPT ALL
+    SELECT * FROM bronze_normalized
+),
+
+validation_results AS (
+    SELECT
+        'iban_base' AS table_name,
+        'record_count' AS validation_point,
+        CAST((SELECT COUNT(*) FROM bronze_layer) AS BIGINT) AS bronze_layer_count,
+        CAST((SELECT COUNT(*) FROM silver_layer) AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM bronze_layer) = (SELECT COUNT(*) FROM silver_layer) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'iban_base' AS table_name,
+        'column_count' AS validation_point,
+        CAST((SELECT COUNT(*) FROM bronze_columns) AS BIGINT) AS bronze_layer_count,
+        CAST((SELECT COUNT(*) FROM silver_columns) AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM bronze_columns) = (SELECT COUNT(*) FROM silver_columns) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'iban_base' AS table_name,
+        'column_names_match' AS validation_point,
+        CAST((
+            SELECT COUNT(*)
+            FROM bronze_columns b
+            FULL OUTER JOIN silver_columns s
+              ON b.column_position = s.column_position
+             AND b.column_name = s.column_name
+            WHERE b.column_name IS NULL OR s.column_name IS NULL
+        ) AS BIGINT) AS bronze_layer_count,
+        CAST(0 AS BIGINT) AS silver_layer_count,
+        CASE WHEN NOT EXISTS (
+            SELECT 1
+            FROM bronze_columns b
+            FULL OUTER JOIN silver_columns s
+              ON b.column_position = s.column_position
+             AND b.column_name = s.column_name
+            WHERE b.column_name IS NULL OR s.column_name IS NULL
+        ) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'iban_base' AS table_name,
+        'mismatching_rows_bronze_minus_silver' AS validation_point,
+        CAST((SELECT COUNT(*) FROM bronze_minus_silver) AS BIGINT) AS bronze_layer_count,
+        CAST(0 AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM bronze_minus_silver) = 0 THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'iban_base' AS table_name,
+        'mismatching_rows_silver_minus_bronze' AS validation_point,
+        CAST(0 AS BIGINT) AS bronze_layer_count,
+        CAST((SELECT COUNT(*) FROM silver_minus_bronze) AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM silver_minus_bronze) = 0 THEN 'PASS' ELSE 'FAIL' END AS validation_status
+)
+
+SELECT *
+FROM validation_results
+ORDER BY validation_point;

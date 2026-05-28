@@ -1,0 +1,118 @@
+---104) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".PAYMENT_STATUS_HISTORY_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        id,
+        paymentid,
+        paymentrequeststatusid,
+        createdby,
+        createdon,
+        assignedto,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_PAYMENTSTATUSLOG
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        paymentid,
+        paymentrequeststatus,
+        createdby,
+        createdon,
+        assignedto,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".PAYMENT_STATUS_HISTORY_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+SELECT 'COUNT_VALIDATION', COUNT(*), (SELECT COUNT(*) FROM silver_layer)
+FROM bronze_layer
+
+UNION ALL
+
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) t
+
+UNION ALL
+
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) t
+
+UNION ALL
+
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(paymentid AS VARCHAR),
+        CAST(paymentrequeststatusid AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(paymentid AS VARCHAR),
+        CAST(paymentrequeststatus AS VARCHAR)
+    FROM silver_layer
+) t
+
+UNION ALL
+
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(paymentid AS VARCHAR),
+        CAST(paymentrequeststatus AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(paymentid AS VARCHAR),
+        CAST(paymentrequeststatusid AS VARCHAR)
+    FROM bronze_layer
+) t
+
+UNION ALL
+
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer s
+        ON b.id = s.id
+    WHERE
+        COALESCE(CAST(b.paymentid AS VARCHAR), '') <> COALESCE(CAST(s.paymentid AS VARCHAR), '')
+        OR COALESCE(CAST(b.paymentrequeststatusid AS VARCHAR), '') <> COALESCE(CAST(s.paymentrequeststatus AS VARCHAR), '')
+        OR COALESCE(CAST(b.createdby AS VARCHAR), '') <> COALESCE(CAST(s.createdby AS VARCHAR), '')
+        OR COALESCE(CAST(b.assignedto AS VARCHAR), '') <> COALESCE(CAST(s.assignedto AS VARCHAR), '')
+        OR COALESCE(CAST(b.createdon AS VARCHAR), '') <> COALESCE(CAST(s.createdon AS VARCHAR), '')
+) t;

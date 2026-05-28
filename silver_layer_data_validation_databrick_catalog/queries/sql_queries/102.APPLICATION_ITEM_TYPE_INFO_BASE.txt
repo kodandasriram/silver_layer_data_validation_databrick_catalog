@@ -1,0 +1,212 @@
+---102) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".APPLICATION_ITEM_TYPE_INFO_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        id,
+        itemreference,
+        itemid,
+        applicationid,
+        applicationitemtypeinfoid,
+        vendortypeid,
+        vendorcrnumber,
+        foreignvendorid,
+        supportareaid,
+        supportareasubcategoryid,
+        itemname,
+        itemmodel,
+        itemmaker,
+        itemsectionstate,
+        itemstatusid,
+        itemdeliverystatusid,
+        itempaymentstatusid,
+        itemcost,
+        vat,
+        currency,
+        fxrate,
+        quantity,
+        discount,
+        totalcost,
+        totalvat,
+        requestedshare,
+        tamkeenshare,
+        customershare,
+        numberdelivereditems,
+        deliveryoptionalremarks,
+        requestsendeddate,
+        serialnumber,
+        allowtopayoffline,
+        allowtopurchasebeforesubmit,
+        isrequireinspection,
+        istoincludeinfuturepayments,
+        haspassedchecklist,
+        paymentid,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_D1O_APPLICATIONITEM
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        itemreference,
+        itemid,
+        applicationid,
+        applicationitemtypeinfoid,
+        vendortypeid,
+        vendorcrnumber,
+        foreignvendorid,
+        supportareaid,
+        supportareasubcategoryid,
+        itemname,
+        itemmodel,
+        itemmaker,
+        itemsectionstate,
+        itemstatusid,
+        itemdeliverystatusid,
+        itempaymentstatusid,
+        itemcost,
+        vat,
+        currency,
+        fxrate,
+        quantity,
+        discount,
+        totalcost,
+        totalvat,
+        requestedshare,
+        tamkeenshare,
+        customershare,
+        numberdelivereditems,
+        deliveryoptionalremarks,
+        requestsendeddate,
+        serialnumber,
+        allowtopayoffline,
+        allowtopurchasebeforesubmit,
+        isrequireinspection,
+        istoincludeinfuturepayments,
+        haspassedchecklist,
+        paymentid,
+        is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".APPLICATION_ITEM_BASE
+)
+
+SELECT 'COUNT_VALIDATION' AS validation_type,
+       COUNT(*) AS bronze_count,
+       (SELECT COUNT(*) FROM silver_layer) AS silver_count
+FROM bronze_layer
+
+UNION ALL
+
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) d
+
+UNION ALL
+
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) d
+
+UNION ALL
+
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemreference AS VARCHAR),
+        CAST(totalcost AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemreference AS VARCHAR),
+        CAST(totalcost AS VARCHAR)
+    FROM silver_layer
+) x
+
+UNION ALL
+
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemreference AS VARCHAR),
+        CAST(totalcost AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(itemreference AS VARCHAR),
+        CAST(totalcost AS VARCHAR)
+    FROM bronze_layer
+) x
+
+UNION ALL
+
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer s
+        ON CAST(b.id AS VARCHAR) = CAST(s.id AS VARCHAR)
+    WHERE
+           COALESCE(CAST(b.itemreference AS VARCHAR), '') <> COALESCE(CAST(s.itemreference AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemid AS VARCHAR), '') <> COALESCE(CAST(s.itemid AS VARCHAR), '')
+        OR COALESCE(CAST(b.applicationid AS VARCHAR), '') <> COALESCE(CAST(s.applicationid AS VARCHAR), '')
+        OR COALESCE(CAST(b.applicationitemtypeinfoid AS VARCHAR), '') <> COALESCE(CAST(s.applicationitemtypeinfoid AS VARCHAR), '')
+        OR COALESCE(CAST(b.vendortypeid AS VARCHAR), '') <> COALESCE(CAST(s.vendortypeid AS VARCHAR), '')
+        OR COALESCE(CAST(b.vendorcrnumber AS VARCHAR), '') <> COALESCE(CAST(s.vendorcrnumber AS VARCHAR), '')
+        OR COALESCE(CAST(b.foreignvendorid AS VARCHAR), '') <> COALESCE(CAST(s.foreignvendorid AS VARCHAR), '')
+        OR COALESCE(CAST(b.supportareaid AS VARCHAR), '') <> COALESCE(CAST(s.supportareaid AS VARCHAR), '')
+        OR COALESCE(CAST(b.supportareasubcategoryid AS VARCHAR), '') <> COALESCE(CAST(s.supportareasubcategoryid AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemname AS VARCHAR), '') <> COALESCE(CAST(s.itemname AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemmodel AS VARCHAR), '') <> COALESCE(CAST(s.itemmodel AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemmaker AS VARCHAR), '') <> COALESCE(CAST(s.itemmaker AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemsectionstate AS VARCHAR), '') <> COALESCE(CAST(s.itemsectionstate AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemstatusid AS VARCHAR), '') <> COALESCE(CAST(s.itemstatusid AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemdeliverystatusid AS VARCHAR), '') <> COALESCE(CAST(s.itemdeliverystatusid AS VARCHAR), '')
+        OR COALESCE(CAST(b.itempaymentstatusid AS VARCHAR), '') <> COALESCE(CAST(s.itempaymentstatusid AS VARCHAR), '')
+        OR COALESCE(CAST(b.itemcost AS VARCHAR), '') <> COALESCE(CAST(s.itemcost AS VARCHAR), '')
+        OR COALESCE(CAST(b.vat AS VARCHAR), '') <> COALESCE(CAST(s.vat AS VARCHAR), '')
+        OR COALESCE(CAST(b.currency AS VARCHAR), '') <> COALESCE(CAST(s.currency AS VARCHAR), '')
+        OR COALESCE(CAST(b.fxrate AS VARCHAR), '') <> COALESCE(CAST(s.fxrate AS VARCHAR), '')
+        OR COALESCE(CAST(b.quantity AS VARCHAR), '') <> COALESCE(CAST(s.quantity AS VARCHAR), '')
+        OR COALESCE(CAST(b.discount AS VARCHAR), '') <> COALESCE(CAST(s.discount AS VARCHAR), '')
+        OR COALESCE(CAST(b.totalcost AS VARCHAR), '') <> COALESCE(CAST(s.totalcost AS VARCHAR), '')
+        OR COALESCE(CAST(b.totalvat AS VARCHAR), '') <> COALESCE(CAST(s.totalvat AS VARCHAR), '')
+        OR COALESCE(CAST(b.requestedshare AS VARCHAR), '') <> COALESCE(CAST(s.requestedshare AS VARCHAR), '')
+        OR COALESCE(CAST(b.tamkeenshare AS VARCHAR), '') <> COALESCE(CAST(s.tamkeenshare AS VARCHAR), '')
+        OR COALESCE(CAST(b.customershare AS VARCHAR), '') <> COALESCE(CAST(s.customershare AS VARCHAR), '')
+        OR COALESCE(CAST(b.numberdelivereditems AS VARCHAR), '') <> COALESCE(CAST(s.numberdelivereditems AS VARCHAR), '')
+        OR COALESCE(CAST(b.deliveryoptionalremarks AS VARCHAR), '') <> COALESCE(CAST(s.deliveryoptionalremarks AS VARCHAR), '')
+        OR COALESCE(CAST(b.requestsendeddate AS VARCHAR), '') <> COALESCE(CAST(s.requestsendeddate AS VARCHAR), '')
+        OR COALESCE(CAST(b.serialnumber AS VARCHAR), '') <> COALESCE(CAST(s.serialnumber AS VARCHAR), '')
+        OR COALESCE(CAST(b.allowtopayoffline AS VARCHAR), '') <> COALESCE(CAST(s.allowtopayoffline AS VARCHAR), '')
+        OR COALESCE(CAST(b.allowtopurchasebeforesubmit AS VARCHAR), '') <> COALESCE(CAST(s.allowtopurchasebeforesubmit AS VARCHAR), '')
+        OR COALESCE(CAST(b.isrequireinspection AS VARCHAR), '') <> COALESCE(CAST(s.isrequireinspection AS VARCHAR), '')
+        OR COALESCE(CAST(b.istoincludeinfuturepayments AS VARCHAR), '') <> COALESCE(CAST(s.istoincludeinfuturepayments AS VARCHAR), '')
+        OR COALESCE(CAST(b.haspassedchecklist AS VARCHAR), '') <> COALESCE(CAST(s.haspassedchecklist AS VARCHAR), '')
+        OR COALESCE(CAST(b.paymentid AS VARCHAR), '') <> COALESCE(CAST(s.paymentid AS VARCHAR), '')
+) t;

@@ -1,0 +1,136 @@
+---94) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".RM_MILESTONES_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        id,
+        applicationid,
+        milestonereferencenumber,
+        perspectiveid,
+        description,
+        targetparameterid,
+        target,
+        targetdate,
+        achievedon,
+        milestonesstatusid,
+        updatedat,
+        createdat,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_PX1_RMMILESTONES
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        applicationid,
+        milestonereferencenumber,
+        perspectiveid,
+        description,
+        targetparameterid,
+        target,
+        targetdate,
+        achievedon,
+        milestonesstatusid,
+        updatedate,
+        createdate,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".RM_MILESTONES_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+SELECT 'COUNT_VALIDATION', COUNT(*), (SELECT COUNT(*) FROM silver_layer)
+FROM bronze_layer
+
+UNION ALL
+
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+)
+
+UNION ALL
+
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(applicationid AS VARCHAR),
+        CAST(milestonereferencenumber AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(applicationid AS VARCHAR),
+        CAST(milestonereferencenumber AS VARCHAR)
+    FROM silver_layer
+) t
+
+UNION ALL
+
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(applicationid AS VARCHAR),
+        CAST(milestonereferencenumber AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(applicationid AS VARCHAR),
+        CAST(milestonereferencenumber AS VARCHAR)
+    FROM bronze_layer
+) t
+
+UNION ALL
+
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer s
+        ON b.id = s.id
+    WHERE
+        COALESCE(CAST(b.applicationid AS VARCHAR), '') <> COALESCE(CAST(s.applicationid AS VARCHAR), '')
+        OR COALESCE(CAST(b.milestonereferencenumber AS VARCHAR), '') <> COALESCE(CAST(s.milestonereferencenumber AS VARCHAR), '')
+        OR COALESCE(CAST(b.perspectiveid AS VARCHAR), '') <> COALESCE(CAST(s.perspectiveid AS VARCHAR), '')
+        OR COALESCE(CAST(b.description AS VARCHAR), '') <> COALESCE(CAST(s.description AS VARCHAR), '')
+        OR COALESCE(CAST(b.targetparameterid AS VARCHAR), '') <> COALESCE(CAST(s.targetparameterid AS VARCHAR), '')
+        OR COALESCE(CAST(b.target AS VARCHAR), '') <> COALESCE(CAST(s.target AS VARCHAR), '')
+        OR COALESCE(CAST(b.targetdate AS VARCHAR), '') <> COALESCE(CAST(s.targetdate AS VARCHAR), '')
+        OR COALESCE(CAST(b.achievedon AS VARCHAR), '') <> COALESCE(CAST(s.achievedon AS VARCHAR), '')
+        OR COALESCE(CAST(b.milestonesstatusid AS VARCHAR), '') <> COALESCE(CAST(s.milestonesstatusid AS VARCHAR), '')
+        OR COALESCE(CAST(b.updatedat AS VARCHAR), '') <> COALESCE(CAST(s.updatedate AS VARCHAR), '')
+        OR COALESCE(CAST(b.createdat AS VARCHAR), '') <> COALESCE(CAST(s.createdate AS VARCHAR), '')
+) t;

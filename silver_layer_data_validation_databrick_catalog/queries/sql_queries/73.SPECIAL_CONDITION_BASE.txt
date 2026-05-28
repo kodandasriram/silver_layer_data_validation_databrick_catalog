@@ -1,0 +1,165 @@
+---73) dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".SPECIAL_CONDITION_BASE
+
+WITH bronze_layer AS (
+    SELECT
+        a.id,
+        a.applicationid,
+        a.supportareaid AS supportarea,
+        a.specialconditionboid,
+        b.label AS specialconditionstatus,
+        b.isinternal,
+        b.tagcolorid,
+        c.label AS specialconditiontarget,
+        a.specialconditionlevelid AS specialconditionlevel,
+        a.targetvalue,
+        a.description,
+        a.isactive,
+        a.activestatusid,
+        a.referencenumber,
+        a.priority,
+        a.amendrequestid,
+        a.parentspecialconditionid AS parentspecialcondition,
+        a.fixedconditionboid,
+        a.createdon,
+        a.updatedon,
+        FALSE AS is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_L68_SPECIALCONDITION a
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_L68_SPECIALCONDITIONSTATUS b
+        ON a.specialconditionstatusid = b.code
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_L68_SPECIALCONDITIONTARGET c
+        ON a.specialconditiontargetid = c.code
+),
+
+silver_layer AS (
+    SELECT
+        id,
+        applicationid,
+        supportarea,
+        specialconditionboid,
+        specialconditionstatus,
+        isinternal,
+        tagcolorid,
+        specialconditiontarget,
+        specialconditionlevel,
+        targetvalue,
+        description,
+        isactive,
+        activestatusid,
+        referencenumber,
+        priority,
+        amendrequestid,
+        parentspecialcondition,
+        fixedconditionboid,
+        createdon,
+        updatedon,
+        is_deleted
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".SPECIAL_CONDITION_BASE
+)
+
+-- =========================
+-- VALIDATION
+-- =========================
+
+SELECT 'COUNT_VALIDATION', COUNT(*), (SELECT COUNT(*) FROM silver_layer)
+FROM bronze_layer
+
+UNION ALL
+
+SELECT 'DUPLICATE_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM bronze_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) t
+
+UNION ALL
+
+SELECT 'DUPLICATE_SILVER', COUNT(*), NULL
+FROM (
+    SELECT id
+    FROM silver_layer
+    GROUP BY id
+    HAVING COUNT(*) > 1
+) t
+
+UNION ALL
+
+SELECT 'PK_NULL_BRONZE', COUNT(*), NULL
+FROM bronze_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'PK_NULL_SILVER', COUNT(*), NULL
+FROM silver_layer
+WHERE id IS NULL
+
+UNION ALL
+
+SELECT 'BRONZE_NOT_IN_SILVER', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(specialconditionstatus AS VARCHAR),
+        CAST(targetvalue AS VARCHAR)
+    FROM bronze_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(specialconditionstatus AS VARCHAR),
+        CAST(targetvalue AS VARCHAR)
+    FROM silver_layer
+) t
+
+UNION ALL
+
+SELECT 'SILVER_NOT_IN_BRONZE', COUNT(*), NULL
+FROM (
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(specialconditionstatus AS VARCHAR),
+        CAST(targetvalue AS VARCHAR)
+    FROM silver_layer
+
+    EXCEPT
+
+    SELECT
+        CAST(id AS VARCHAR),
+        CAST(specialconditionstatus AS VARCHAR),
+        CAST(targetvalue AS VARCHAR)
+    FROM bronze_layer
+) t
+
+UNION ALL
+
+SELECT 'COLUMN_MISMATCH_COUNT', COUNT(*), NULL
+FROM (
+    SELECT b.id
+    FROM bronze_layer b
+    JOIN silver_layer s
+        ON b.id = s.id
+    WHERE
+        COALESCE(CAST(b.applicationid AS VARCHAR), '') <> COALESCE(CAST(s.applicationid AS VARCHAR), '')
+        OR COALESCE(CAST(b.supportarea AS VARCHAR), '') <> COALESCE(CAST(s.supportarea AS VARCHAR), '')
+        OR COALESCE(CAST(b.specialconditionboid AS VARCHAR), '') <> COALESCE(CAST(s.specialconditionboid AS VARCHAR), '')
+        OR COALESCE(CAST(b.specialconditionstatus AS VARCHAR), '') <> COALESCE(CAST(s.specialconditionstatus AS VARCHAR), '')
+        OR COALESCE(CAST(b.isinternal AS VARCHAR), '') <> COALESCE(CAST(s.isinternal AS VARCHAR), '')
+        OR COALESCE(CAST(b.tagcolorid AS VARCHAR), '') <> COALESCE(CAST(s.tagcolorid AS VARCHAR), '')
+        OR COALESCE(CAST(b.specialconditiontarget AS VARCHAR), '') <> COALESCE(CAST(s.specialconditiontarget AS VARCHAR), '')
+        OR COALESCE(CAST(b.specialconditionlevel AS VARCHAR), '') <> COALESCE(CAST(s.specialconditionlevel AS VARCHAR), '')
+        OR COALESCE(CAST(b.targetvalue AS VARCHAR), '') <> COALESCE(CAST(s.targetvalue AS VARCHAR), '')
+        OR COALESCE(CAST(b.description AS VARCHAR), '') <> COALESCE(CAST(s.description AS VARCHAR), '')
+        OR COALESCE(CAST(b.isactive AS VARCHAR), '') <> COALESCE(CAST(s.isactive AS VARCHAR), '')
+        OR COALESCE(CAST(b.activestatusid AS VARCHAR), '') <> COALESCE(CAST(s.activestatusid AS VARCHAR), '')
+        OR COALESCE(CAST(b.referencenumber AS VARCHAR), '') <> COALESCE(CAST(s.referencenumber AS VARCHAR), '')
+        OR COALESCE(CAST(b.priority AS VARCHAR), '') <> COALESCE(CAST(s.priority AS VARCHAR), '')
+        OR COALESCE(CAST(b.amendrequestid AS VARCHAR), '') <> COALESCE(CAST(s.amendrequestid AS VARCHAR), '')
+        OR COALESCE(CAST(b.parentspecialcondition AS VARCHAR), '') <> COALESCE(CAST(s.parentspecialcondition AS VARCHAR), '')
+        OR COALESCE(CAST(b.fixedconditionboid AS VARCHAR), '') <> COALESCE(CAST(s.fixedconditionboid AS VARCHAR), '')
+        OR COALESCE(CAST(b.createdon AS VARCHAR), '') <> COALESCE(CAST(s.createdon AS VARCHAR), '')
+        OR COALESCE(CAST(b.updatedon AS VARCHAR), '') <> COALESCE(CAST(s.updatedon AS VARCHAR), '')
+        OR COALESCE(CAST(b.is_deleted AS VARCHAR), '') <> COALESCE(CAST(s.is_deleted AS VARCHAR), '')
+) t;

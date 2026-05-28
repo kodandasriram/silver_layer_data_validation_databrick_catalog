@@ -1,0 +1,1029 @@
+-- Compare bronze-layer query output with silver-layer table output for assessment_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to VARCHAR.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\union of os2_os1_mis\assessment_base_os2_os1_mis_union_bronze_layer.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\assessment_base_silver_layer.sql
+
+WITH
+bronze_layer AS (
+-- Bronze-layer UNION ALL for assessment_base across OS2, OS1, and MIS.
+-- Output column order follows the dbt model: assessment_base_union all.sql.
+-- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+
+WITH assessment_base_os2_source AS (
+-- Standalone Trino SQL converted from dbt model.
+/*
+ =============================================================================
+   Name          : ASSESSMENT_BASE
+   Description   : This model extracts and transforms assessment-level data
+                   from the NEO2 (OS2) Bronze Layer and loads it into the
+                   ASSESSMENT_BASE target table as part of the Silver Layer
+                   data pipeline.
+
+                   The model captures assessment workflow and operational
+                   details related to applications, including assessment,
+                   review, approval, and monitoring roles and teams.
+
+                   The model enriches assessment data by joining reference
+                   tables such as assessment status and team master tables
+                   to retrieve descriptive team names and status labels.
+
+                   The model also applies data cleansing, timestamp
+                   standardization, and deduplication logic to ensure only
+                   the latest version of each assessment record is retained.
+
+   Source Tables : neo2.OSUSR_1AT_ASSESSMENT
+                   neo2.OSUSR_1AT_ASSESSMENTSTATUS
+                   neo2.OSUSR_KUO_TEAM
+
+   Target Table  : ASSESSMENT_BASE
+
+   Load Type     : Full Load
+   Materialized  : Table
+   Format        : PARQUET
+   Tags          : neo2, daily
+
+   Business Rules:
+   ---------------------------------------------------------------------------
+   1. Latest assessment record is retained using deduplication logic:
+        - Partition By : ass.ID
+        - Order By     : ass.UPDATEDON DESC,
+                         ass.CREATEDON DESC
+
+   2. Team names are enriched from OSUSR_KUO_TEAM:
+        - Assessment Team 1
+        - Assessment Team 2
+        - Review Team 1
+        - Approve Team 1
+        - Assessment Team MOL
+
+   3. Assessment status description is enriched from:
+        - OSUSR_1AT_ASSESSMENTSTATUS
+
+   4. String cleansing is applied using:
+        - clean_string()
+        - clean_string_upper()
+
+   5. Timestamp fields are standardized using:
+        - safe_cast_timestamp()
+
+   6. Source system is hardcoded as:
+        - 'NEO2'
+
+   Revision History:
+   ---------------------------------------------------------------------------
+   Version  | Date         | Author        | Description
+   ---------------------------------------------------------------------------
+   1.0      | 2026-05-12   | siva       | Initial Development
+   ---------------------------------------------------------------------------
+============================================================================= 
+*/
+
+with CTE_OSUSR_1AT_ASSESSMENT AS
+(
+SELECT
+        ass.id,
+        ass.applicationid,
+        ass.amendmentrequestid,
+        ass.assessmentrole1,
+        ass.assessmentrole2,
+        ass.reviewrole,
+        ass.approverole,
+        ass.processid,
+        KT1.name as assessmentteam1_name,
+        KT2.name as assessmentteam2_name,
+        KT3.name as reviewteam1_name,
+        KT4.name as approveteam1_name,
+        assessmentstatus.LABEL as assessmentstatusid,
+        ass.assessmentrolemol,
+        KT5.name as assessmentteammol_name,
+        ass.reviewrole1,
+        ass.reviewrole2,
+        ass.reviewteam2,
+        ass.monitoringrole1,
+        ass.monitoringrole2,
+        ass.monitoringteam1,
+        ass.monitoringteam2,
+        FALSE as is_deleted,
+        'NEO2' AS source_system_name,
+        ass.updatedon,
+        ass.createdon,
+        cast(current_timestamp AT TIME ZONE 'UTC' AS timestamp) AS dbt_updated_at,
+        ROW_NUMBER() OVER (PARTITION BY ass.id ORDER BY ass.updatedon DESC NULLS LAST, ass.createdon DESC NULLS LAST) AS rnk
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_1AT_ASSESSMENT ass
+
+    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_1AT_ASSESSMENTSTATUS  assessmentstatus
+        ON ass.ASSESSMENTSTATUSID = assessmentstatus.CODE
+    LEFT join dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_KUO_TEAM KT1
+        ON  ass.ASSESSMENTTEAM1 = KT1.ID  
+    LEFT join dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_KUO_TEAM KT2
+        ON  ass.ASSESSMENTTEAM2 = KT2.ID 
+    LEFT join dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_KUO_TEAM KT3
+        ON  ass.REVIEWTEAM1 = KT3.ID 
+    LEFT join dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_KUO_TEAM KT4
+        ON  ass.APPROVETEAM1 = KT4.ID 
+    LEFT join dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_KUO_TEAM KT5
+        ON  ass.ASSESSMENTTEAMMOL = KT5.ID 
+)
+SELECT id,
+       applicationid,
+       amendmentrequestid,
+       assessmentrole1,
+       assessmentrole2,
+       reviewrole,
+       approverole,
+       processid,
+       NULLIF(TRIM(CAST(assessmentteam1_name AS VARCHAR)), '') AS assessmentteam1_name,
+       NULLIF(TRIM(CAST(assessmentteam2_name AS VARCHAR)), '') AS assessmentteam2_name,
+       NULLIF(TRIM(CAST(reviewteam1_name AS VARCHAR)), '') AS reviewteam1_name,
+       NULLIF(TRIM(CAST(approveteam1_name AS VARCHAR)), '') AS approveteam1_name,
+       assessmentstatusid,
+       assessmentrolemol,
+       assessmentteammol_name,
+       reviewrole1,
+       reviewrole2,
+       reviewteam2,
+       monitoringrole1,
+       monitoringrole2,
+       monitoringteam1,
+       monitoringteam2,
+       is_deleted,
+       UPPER(NULLIF(TRIM(CAST(SOURCE_SYSTEM_NAME AS VARCHAR)), '')) AS source_system_name,
+       TRY_CAST(NULLIF(CAST(UPDATEDON AS VARCHAR), '') AS TIMESTAMP) AS updatedon,
+       TRY_CAST(NULLIF(CAST(CREATEDON AS VARCHAR), '') AS TIMESTAMP) AS createdon,
+       TRY_CAST(NULLIF(CAST(DBT_UPDATED_AT AS VARCHAR), '') AS TIMESTAMP) AS dbt_updated_at
+FROM CTE_OSUSR_1AT_ASSESSMENT ass
+WHERE rnk = 1
+),
+assessment_base_mis_source AS (
+WITH option_set_values AS (
+    SELECT
+        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS VARCHAR) AS option_key,
+        max(sm.value) AS option_value
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".STRINGMAP sm
+    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".ENTITYLOGICALVIEW elv
+        ON sm.objecttypecode = elv.objecttypecode
+    WHERE sm.attributevalue IS NOT NULL
+      AND sm.value IS NOT NULL
+    GROUP BY
+        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS VARCHAR)
+),
+option_set_map AS (
+    SELECT map_agg(option_key, option_value) AS option_values
+    FROM option_set_values
+),
+/*
+============================================================================
+silver_assessment_mis.sql
+============================================================================
+Per-source intermediate Silver model for the Assessment domain â€” MIS only.
+
+Sources (Assessment domain entities):
+  â˜… tmkn_sitevisit       â€” physical site visit records
+  â˜… tmkn_virtualvisit    â€” virtual visit records (linked to a site visit)
+  â˜… tmkn_esmonitoring    â€” ES (Enterprise Support) monitoring assessments
+
+Reference SPs:
+  - RPT-038_ES_Site_Visits      (anchor on tmkn_sitevisit)
+  - RPT-039_Virtual_Visits      (anchor on tmkn_virtualvisit, joined to sitevisit)
+  - RPT-037_ES_Monitoring       (anchor on tmkn_esmonitoring)
+  - RPT-034_ES_Payment_Request  (uses tmkn_sitevisit as a reference)
+
+Structure decision:
+  - Three parallel anchor entities â€” UNIONed (not joined together).
+  - Site visits and virtual visits are conceptually related (virtual visit
+    references its parent site visit), but we keep them as separate UNION
+    branches to preserve their independent lifecycles. The site_visit_id FK
+    is preserved on virtual visit rows for downstream re-joining if needed.
+  - tmkn_esmonitoring is a separate type of assessment (financial monitoring)
+    and shares no structural overlap with site/virtual visits â€” natural UNION.
+
+Cross-domain note: RPT-037, RPT-038, and RPT-039 all join to tmkn_application
+and tmkn_company. Those joins are NOT performed here â€” they belong in the
+Application and Customer Enterprise domains. Application/Company FKs are
+preserved here for downstream re-joining.
+
+The assessment_subtype column identifies which sub-type each row is:
+  - SITE_VISIT
+  - VIRTUAL_VISIT
+  - ES_MONITORING
+============================================================================
+*/
+
+
+-- ============================================================================
+-- Pre-aggregated site visit / monitoring status history (replaces SP cursor)
+-- ============================================================================
+sv_status_history AS (
+    SELECT
+        sh.tmkn_ref                                      AS reference_id,
+        sh.tmkn_StatusReport                             AS status_report_id,
+        COUNT(sh.tmkn_svshid)                            AS occurrence_count,
+        MIN(sh.createdon)                                AS first_created_on,
+        MAX(sh.createdon)                                AS last_created_on
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_SVSHBASE sh
+    WHERE sh.tmkn_ref IS NOT NULL
+      AND sh.statecode = 0
+    GROUP BY
+        sh.tmkn_ref,
+        sh.tmkn_StatusReport
+),
+
+mon_status_history AS (
+    SELECT
+        sh.tmkn_ref                                      AS reference_id,
+        sh.tmkn_StatusReport                             AS status_report_id,
+        COUNT(sh.tmkn_monitoringstatushistoryid)         AS occurrence_count,
+        MIN(sh.createdon)                                AS first_created_on,
+        MAX(sh.createdon)                                AS last_created_on
+    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_MONITORINGSTATUSHISTORYBASE sh
+    WHERE sh.tmkn_ref IS NOT NULL
+      AND sh.statecode = 0
+    GROUP BY
+        sh.tmkn_ref,
+        sh.tmkn_StatusReport
+)
+
+
+-- ============================================================================
+-- SUB-TYPE 1: Site Visits
+-- Anchor: tmkn_sitevisit
+-- ============================================================================
+SELECT
+    'SITE_VISIT' AS assessment_subtype,
+    'tmkn_sitevisit' AS mis_source_table,
+    -- Identifiers
+    CAST(sv.tmkn_sitevisitid AS VARCHAR)                 AS assessment_id,
+    sv.tmkn_name                                         AS assessment_no,
+    -- Foreign keys (preserved for downstream cross-domain joins)
+    CAST(sv.tmkn_applicationref AS VARCHAR)              AS application_id,
+    CAST(sv.tmkn_sitevisitsid AS VARCHAR)                AS monitoring_id,
+    CAST(NULL AS VARCHAR)                                AS site_visit_parent_id,
+    CAST(NULL AS VARCHAR)                                AS company_id,
+    -- Display names
+      sv.tmkn_applicationref                             AS application_no_name,
+      sv.tmkn_sitevisitsid                               AS monitoring_ref_name,
+      sv.tmkn_svref                                      AS payment_ref_name,
+      sv.ownerid                                         AS owner_name,
+    CAST(NULL AS VARCHAR)                                AS sp_name,
+    -- Site visit specific fields
+    sv.tmkn_sitevisitdate                                AS site_visit_date,
+     CASE WHEN sv.tmkn_type IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('tmkn_type') || '|' || CAST(sv.tmkn_type AS VARCHAR)) END              AS site_visit_type, 
+     CASE WHEN sv.tmkn_virtuallyverified IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('tmkn_virtuallyverified') || '|' || CAST(sv.tmkn_virtuallyverified AS VARCHAR)) END AS virtually_verified, 
+     CASE WHEN sv.mis_onhold IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('mis_onhold') || '|' || CAST(sv.mis_onhold AS VARCHAR)) END             AS on_hold, 
+     CASE WHEN sv.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(sv.tmkn_workflowstatus AS VARCHAR)) END    AS workflow_status, 
+     CASE WHEN sv.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('statecode') || '|' || CAST(sv.statecode AS VARCHAR)) END              AS state,               
+    -- Status history milestones (for site visit)
+    sh_submit_request.first_created_on                   AS submit_request_on,
+    --sh_submit_request.first_created_by                   AS submit_request_by,
+    CAST(NULL AS VARCHAR) AS submit_request_by,   ---NEWLY ADDED
+    sh_submit_results.first_created_on                   AS submit_results_on,
+    --sh_submit_results.first_created_by                   AS submit_results_by,
+    CAST(NULL AS VARCHAR) AS submit_results_by, ---NEWLY ADDED
+    sh_close_request.last_created_on                     AS close_request_on,
+    --sh_close_request.last_created_by                     AS close_request_by,
+    CAST(NULL AS VARCHAR) AS close_request_by, ---NEWLY ADDED
+    -- Monitoring-specific placeholders (NULL for this branch)
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_revenue_t1,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_revenue_t,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_profit_t1,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_profit_t,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_reward_percentage,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_reward_score,
+    CAST(NULL AS INTEGER)                                AS monitoring_total_employees,
+    CAST(NULL AS INTEGER)                                AS monitoring_bahrainis_count,
+    CAST(NULL AS INTEGER)                                AS monitoring_non_bahrainis_count,
+    CAST(NULL AS INTEGER)                                AS monitoring_disabled_bahrainis,
+    CAST(NULL AS BOOLEAN)                                AS monitoring_eligible,
+    CAST(NULL AS BOOLEAN)                                AS monitoring_audited_financial,
+    -- Audit
+    sv.createdon                                         AS created_on,
+    -- Standard trailing audit columns
+    'MIS' AS source_system_name,
+    FALSE AS is_deleted,
+    CURRENT_DATE AS report_date,
+    CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_SITEVISITBASE sv
+LEFT JOIN sv_status_history sh_submit_request
+       ON sh_submit_request.reference_id = sv.tmkn_sitevisitid
+      AND sh_submit_request.status_report_id = 810800000  -- Submit Request
+LEFT JOIN sv_status_history sh_submit_results
+       ON sh_submit_results.reference_id = sv.tmkn_sitevisitid
+      AND sh_submit_results.status_report_id = 810800005  -- Submit Results to Requester
+LEFT JOIN sv_status_history sh_close_request
+       ON sh_close_request.reference_id = sv.tmkn_sitevisitid
+      AND sh_close_request.status_report_id = 810800003  -- Close Request
+
+
+UNION ALL
+
+
+-- ============================================================================
+-- SUB-TYPE 2: Virtual Visits
+-- Anchor: tmkn_virtualvisit (FK back to parent site visit preserved)
+-- ============================================================================
+SELECT
+    'VIRTUAL_VISIT' AS assessment_subtype,
+    'tmkn_virtualvisit' AS mis_source_table,
+
+    -- Identifiers
+    CAST(vv.tmkn_virtualvisitid AS VARCHAR)              AS assessment_id,
+    vv.tmkn_name                                         AS assessment_no,
+
+    -- Foreign keys
+    CAST(NULL AS VARCHAR)                                AS application_id,
+    CAST(NULL AS VARCHAR)                                AS monitoring_id,
+    CAST(vv.tmkn_svref AS VARCHAR)                       AS site_visit_parent_id,
+    CAST(NULL AS VARCHAR)                                AS company_id,
+
+    -- Display names
+    CAST(NULL AS VARCHAR)                                AS application_no_name,
+    CAST(NULL AS VARCHAR)                                AS monitoring_ref_name,
+    vv.tmkn_svref                                        AS payment_ref_name,
+    CAST(NULL AS VARCHAR)                                AS owner_name,
+    vv.tmkn_sp                                           AS sp_name,
+
+    -- Site visit specific (NULL for virtual)
+    CAST(NULL AS TIMESTAMP)                              AS site_visit_date,
+    CAST(NULL AS VARCHAR)                                AS site_visit_type,
+    CAST(NULL AS VARCHAR)                                AS virtually_verified,
+    CAST(NULL AS VARCHAR)                                AS on_hold,
+     CASE WHEN vv.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_virtualvisit') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(vv.tmkn_workflowstatus AS VARCHAR)) END AS workflow_status, 
+     CASE WHEN vv.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_virtualvisit') || '|' || lower('statecode') || '|' || CAST(vv.statecode AS VARCHAR)) END           AS state,            
+
+    -- Status history (NULL for virtual visits â€” they don't carry milestones in source SP)
+    CAST(NULL AS TIMESTAMP)                              AS submit_request_on,
+    CAST(NULL AS VARCHAR)                                AS submit_request_by, ---UNCOMMENTED
+    CAST(NULL AS TIMESTAMP)                              AS submit_results_on,
+    CAST(NULL AS VARCHAR)                                AS submit_results_by, ---UNCOMMENTED
+    CAST(NULL AS TIMESTAMP)                              AS close_request_on,
+    CAST(NULL AS VARCHAR)                                AS close_request_by, ---UNCOMMENTED
+
+    -- Monitoring-specific placeholders
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_revenue_t1,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_revenue_t,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_profit_t1,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_profit_t,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_reward_percentage,
+    CAST(NULL AS DECIMAL(18, 2))                         AS monitoring_reward_score,
+    CAST(NULL AS INTEGER)                                AS monitoring_total_employees,
+    CAST(NULL AS INTEGER)                                AS monitoring_bahrainis_count,
+    CAST(NULL AS INTEGER)                                AS monitoring_non_bahrainis_count,
+    CAST(NULL AS INTEGER)                                AS monitoring_disabled_bahrainis,
+    CAST(NULL AS BOOLEAN)                                AS monitoring_eligible,
+    CAST(NULL AS BOOLEAN)                                AS monitoring_audited_financial,
+
+    -- Audit
+    vv.createdon                                         AS created_on,
+
+    -- Standard trailing
+    'MIS' AS source_system_name,
+    FALSE AS is_deleted,
+    CURRENT_DATE AS report_date,
+    CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
+
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_VIRTUALVISITBASE vv
+
+
+UNION ALL
+
+
+-- ============================================================================
+-- SUB-TYPE 3: ES Monitoring
+-- Anchor: tmkn_esmonitoring (financial monitoring assessment)
+-- ============================================================================
+SELECT
+    'ES_MONITORING' AS assessment_subtype,
+    'tmkn_esmonitoring' AS mis_source_table,
+
+    -- Identifiers
+    CAST(esmon.tmkn_esmonitoringid AS VARCHAR)           AS assessment_id,
+    esmon.tmkn_id                                        AS assessment_no,
+
+    -- Foreign keys
+    CAST(esmon.tmkn_esappllication AS VARCHAR)           AS application_id,
+    CAST(esmon.tmkn_esmonitoringid AS VARCHAR)           AS monitoring_id,
+    CAST(NULL AS VARCHAR)                                AS site_visit_parent_id,
+    CAST(NULL AS VARCHAR)                                AS company_id,
+
+    -- Display names
+    esmon.tmkn_esappllication                            AS application_no_name,
+    CAST(NULL AS VARCHAR)                                AS monitoring_ref_name,
+    CAST(NULL AS VARCHAR)                                AS payment_ref_name,
+    esmon.ownerid                                        AS owner_name,
+    CAST(NULL AS VARCHAR)                                AS sp_name,
+
+    -- Site visit fields (NULL for monitoring)
+    CAST(NULL AS TIMESTAMP)                              AS site_visit_date,
+    CAST(NULL AS VARCHAR)                                AS site_visit_type,
+    CAST(NULL AS VARCHAR)                                AS virtually_verified,
+    CAST(NULL AS VARCHAR)                                AS on_hold,
+     CASE WHEN esmon.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_esmonitoring') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(esmon.tmkn_workflowstatus AS VARCHAR)) END AS workflow_status, 
+     CASE WHEN esmon.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_esmonitoring') || '|' || lower('statecode') || '|' || CAST(esmon.statecode AS VARCHAR)) END           AS state, 
+    -- Status history milestones for monitoring
+    sh_send_sv.last_created_on                           AS submit_request_on,
+    --sh_send_sv.last_created_by                           AS submit_request_by, 
+    CAST(NULL AS VARCHAR) as submit_request_by,                                    ---NEWLY ADDED
+    sh_analyst.last_created_on                           AS submit_results_on,
+    --sh_analyst.last_created_by                           AS submit_results_by, 
+    CAST(NULL AS VARCHAR) as submit_results_by,                                     ---NEWLY ADDED
+    sh_director.last_created_on                          AS close_request_on,
+    --sh_director.last_created_by                          AS close_request_by, 
+    CAST(NULL AS VARCHAR) as close_request_by,                                       ---NEWLY ADDED
+
+    -- Monitoring-specific financial fields
+    esmon.tmkn_revenue                                   AS monitoring_revenue_t1,
+    esmon.tmkn_totalrevenuenew                           AS monitoring_revenue_t,
+    esmon.tmkn_profit                                    AS monitoring_profit_t1,
+    esmon.tmkn_totalprofitnew                            AS monitoring_profit_t,
+    esmon.tmkn_rewardpercentage                          AS monitoring_reward_percentage,
+    esmon.tmkn_rewardscore                               AS monitoring_reward_score,
+    esmon.tmkn_totalemp                                  AS monitoring_total_employees,
+    esmon.tmkn_noofbahrainis                             AS monitoring_bahrainis_count,
+    esmon.tmkn_noofnonbahrainis                          AS monitoring_non_bahrainis_count,
+    esmon.tmkn_noofdisabledbah                           AS monitoring_disabled_bahrainis,
+    esmon.tmkn_eligible                                  AS monitoring_eligible,
+    esmon.tmkn_auditedfinancial                          AS monitoring_audited_financial,
+
+    -- Audit
+    esmon.createdon                                      AS created_on,
+
+    -- Standard trailing
+    'MIS' AS source_system_name,
+    FALSE AS is_deleted,
+    CURRENT_DATE AS report_date,
+    CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
+
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_ESMONITORINGBASE esmon
+LEFT JOIN mon_status_history sh_send_sv
+       ON sh_send_sv.reference_id = esmon.tmkn_esmonitoringid
+      AND sh_send_sv.status_report_id = 810800011  -- Send For Site Visit
+LEFT JOIN mon_status_history sh_analyst
+       ON sh_analyst.reference_id = esmon.tmkn_esmonitoringid
+      AND sh_analyst.status_report_id = 810800001   -- Submit for Analyst confirmation
+LEFT JOIN mon_status_history sh_director
+       ON sh_director.reference_id = esmon.tmkn_esmonitoringid
+      AND sh_director.status_report_id = 810800010  -- Approve: Monitoring Director
+)
+SELECT       
+	   ID,
+       APPLICATIONID,
+       AMENDMENTREQUESTID,
+       ASSESSMENTROLE1,
+       ASSESSMENTROLE2,
+       REVIEWROLE,
+       APPROVEROLE,
+       PROCESSID,
+       ASSESSMENTTEAM1_NAME,
+       ASSESSMENTTEAM2_NAME,
+       REVIEWTEAM1_NAME,
+       APPROVETEAM1_NAME,
+       --ASSESSMENTSTATUSID,
+       ASSESSMENTROLEMOL,
+       ASSESSMENTTEAMMOL_NAME,
+       REVIEWROLE1,
+       REVIEWROLE2,
+       REVIEWTEAM2,
+       MONITORINGROLE1,
+       MONITORINGROLE2,
+       MONITORINGTEAM1,
+       MONITORINGTEAM2,
+      CAST(NULL AS VARCHAR) AS ASSESSMENT_SUBTYPE,
+      CAST(NULL AS VARCHAR) AS MIS_SOURCE_TABLE,
+      CAST(NULL AS VARCHAR) AS ASSESSMENT_ID,
+      CAST(NULL AS VARCHAR) AS ASSESSMENT_NO,
+      CAST(NULL AS VARCHAR) AS APPLICATION_ID,
+      CAST(NULL AS VARCHAR) AS MONITORING_ID,
+      CAST(NULL AS VARCHAR) AS SITE_VISIT_PARENT_ID,
+      CAST(NULL AS VARCHAR) AS COMPANY_ID,
+      CAST(NULL AS VARCHAR) AS APPLICATION_NO_NAME,
+      CAST(NULL AS VARCHAR) AS MONITORING_REF_NAME,
+      CAST(NULL AS VARCHAR) AS PAYMENT_REF_NAME,
+     CAST(NULL AS VARCHAR) AS OWNER_NAME,
+     CAST(NULL AS VARCHAR) AS SP_NAME,
+     CAST(NULL AS TIMESTAMP) AS SITE_VISIT_DATE,
+     CAST(NULL AS VARCHAR) AS SITE_VISIT_TYPE,
+     CAST(NULL AS VARCHAR) AS VIRTUALLY_VERIFIED,
+     CAST(NULL AS VARCHAR) AS ON_HOLD,
+     CAST(NULL AS VARCHAR) AS WORKFLOW_STATUS,
+     CAST(NULL AS VARCHAR) AS STATE,
+     CAST(NULL AS TIMESTAMP) AS SUBMIT_REQUEST_ON,
+     CAST(NULL AS TIMESTAMP) AS SUBMIT_RESULTS_ON,
+     CAST(NULL AS TIMESTAMP) AS CLOSE_REQUEST_ON,
+     CAST(NULL AS VARCHAR) AS SUBMIT_REQUEST_BY,
+     CAST(NULL AS VARCHAR) AS SUBMIT_RESULTS_BY, 
+     CAST(NULL AS VARCHAR) AS CLOSE_REQUEST_BY,
+     CAST(NULL AS DECIMAL) AS MONITORING_REVENUE_T1,
+     CAST(NULL AS DECIMAL) AS MONITORING_REVENUE_T,
+     CAST(NULL AS DECIMAL) AS MONITORING_PROFIT_T1,
+     CAST(NULL AS DECIMAL) AS MONITORING_PROFIT_T,
+     CAST(NULL AS DECIMAL) AS MONITORING_REWARD_PERCENTAGE,
+     CAST(NULL AS DECIMAL) AS MONITORING_REWARD_SCORE,
+     CAST(NULL AS INTEGER) AS MONITORING_TOTAL_EMPLOYEES,
+     CAST(NULL AS INTEGER) AS MONITORING_BAHRAINIS_COUNT,
+     CAST(NULL AS INTEGER) AS MONITORING_NON_BAHRAINIS_COUNT,
+     CAST(NULL AS INTEGER) AS MONITORING_DISABLED_BAHRAINIS,
+     CAST(NULL AS BOOLEAN) AS MONITORING_ELIGIBLE,
+     CAST(NULL AS BOOLEAN) AS MONITORING_AUDITED_FINANCIAL,
+     --CAST(NULL AS TIMESTAMP) AS CREATED_ON,
+     CAST(SOURCE_SYSTEM_NAME AS VARCHAR) AS SOURCE_SYSTEM_NAME,
+     CAST(IS_DELETED AS BOOLEAN) AS IS_DELETED,
+     CAST(CURRENT_DATE AS DATE) AS REPORT_DATE,
+     DBT_UPDATED_AT,
+     CREATEDON,
+     UPDATEDON
+from assessment_base_os2_source 
+	
+UNION ALL
+
+SELECT
+       CAST(NULL AS BIGINT) AS ID,
+       CAST(NULL AS BIGINT) AS APPLICATIONID,
+       CAST(NULL AS BIGINT) AS AMENDMENTREQUESTID,
+       CAST(NULL AS INTEGER) AS ASSESSMENTROLE1,
+       CAST(NULL AS INTEGER) AS ASSESSMENTROLE2,
+       CAST(NULL AS INTEGER) AS REVIEWROLE,
+       CAST(NULL AS INTEGER) AS APPROVEROLE,
+       CAST(NULL AS INTEGER) AS PROCESSID,
+       CAST(NULL AS VARCHAR)  AS ASSESSMENTTEAM1_NAME,
+       CAST(NULL AS VARCHAR) AS ASSESSMENTTEAM2_NAME,
+       CAST(NULL AS VARCHAR) AS REVIEWTEAM1_NAME,
+       CAST(NULL AS VARCHAR) AS APPROVETEAM1_NAME,
+       --CAST(NULL AS VARCHAR) AS ASSESSMENTSTATUSID,
+       CAST(NULL AS INTEGER) AS ASSESSMENTROLEMOL,
+       CAST(NULL AS VARCHAR) AS ASSESSMENTTEAMMOL_NAME,
+       CAST(NULL AS INTEGER) AS REVIEWROLE1,
+       CAST(NULL AS INTEGER) AS REVIEWROLE2,
+       CAST(NULL AS BIGINT) AS REVIEWTEAM2,
+       CAST(NULL AS INTEGER) AS MONITORINGROLE1,
+       CAST(NULL AS INTEGER) AS MONITORINGROLE2,
+       CAST(NULL AS BIGINT) AS MONITORINGTEAM1,
+       CAST(NULL AS BIGINT) AS MONITORINGTEAM2,
+	   ASSESSMENT_SUBTYPE,--MIS
+       MIS_SOURCE_TABLE,
+       ASSESSMENT_ID,
+       ASSESSMENT_NO,
+       APPLICATION_ID,
+      MONITORING_ID,
+      SITE_VISIT_PARENT_ID,
+      COMPANY_ID,
+      APPLICATION_NO_NAME,
+      MONITORING_REF_NAME,
+      PAYMENT_REF_NAME,
+     OWNER_NAME,
+     SP_NAME,
+     SITE_VISIT_DATE,
+     SITE_VISIT_TYPE,
+     VIRTUALLY_VERIFIED,
+     ON_HOLD,
+     WORKFLOW_STATUS,
+     STATE,
+     SUBMIT_REQUEST_ON,
+     SUBMIT_RESULTS_ON,
+     CLOSE_REQUEST_ON,
+     SUBMIT_REQUEST_BY,
+     SUBMIT_RESULTS_BY, 
+     CLOSE_REQUEST_BY,
+     MONITORING_REVENUE_T1,
+     MONITORING_REVENUE_T,
+     MONITORING_PROFIT_T1,
+     MONITORING_PROFIT_T,
+     MONITORING_REWARD_PERCENTAGE,
+     MONITORING_REWARD_SCORE,
+     MONITORING_TOTAL_EMPLOYEES,
+     MONITORING_BAHRAINIS_COUNT,
+     MONITORING_NON_BAHRAINIS_COUNT,
+     MONITORING_DISABLED_BAHRAINIS,
+     MONITORING_ELIGIBLE,
+     MONITORING_AUDITED_FINANCIAL,
+     --CREATED_ON,
+     SOURCE_SYSTEM_NAME,
+     IS_DELETED,
+     REPORT_DATE,
+     DBT_UPDATED_AT,
+     CAST(CREATED_ON AS TIMESTAMP) AS CREATEDON,
+     CAST(NULL AS TIMESTAMP) AS UPDATEDON
+from assessment_base_mis_source
+),
+
+silver_layer AS (
+SELECT
+    id,
+    applicationid,
+    amendmentrequestid,
+    assessmentrole1,
+    assessmentrole2,
+    reviewrole,
+    approverole,
+    processid,
+    assessmentteam1_name,
+    assessmentteam2_name,
+    reviewteam1_name,
+    approveteam1_name,
+    assessmentrolemol,
+    assessmentteammol_name,
+    reviewrole1,
+    reviewrole2,
+    reviewteam2,
+    monitoringrole1,
+    monitoringrole2,
+    monitoringteam1,
+    monitoringteam2,
+    assessment_subtype,
+    mis_source_table,
+    assessment_id,
+    assessment_no,
+    application_id,
+    monitoring_id,
+    site_visit_parent_id,
+    company_id,
+    application_no_name,
+    monitoring_ref_name,
+    payment_ref_name,
+    owner_name,
+    sp_name,
+    site_visit_date,
+    site_visit_type,
+    virtually_verified,
+    on_hold,
+    workflow_status,
+    state,
+    submit_request_on,
+    submit_results_on,
+    close_request_on,
+    submit_request_by,
+    submit_results_by,
+    close_request_by,
+    monitoring_revenue_t1,
+    monitoring_revenue_t,
+    monitoring_profit_t1,
+    monitoring_profit_t,
+    monitoring_reward_percentage,
+    monitoring_reward_score,
+    monitoring_total_employees,
+    monitoring_bahrainis_count,
+    monitoring_non_bahrainis_count,
+    monitoring_disabled_bahrainis,
+    monitoring_eligible,
+    monitoring_audited_financial,
+    source_system_name,
+    is_deleted,
+    report_date,
+    dbt_updated_at,
+    createdon,
+    updatedon
+FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".assessment_base
+),
+
+bronze_columns(column_position, column_name) AS (
+    VALUES
+        (1, 'id'),
+        (2, 'applicationid'),
+        (3, 'amendmentrequestid'),
+        (4, 'assessmentrole1'),
+        (5, 'assessmentrole2'),
+        (6, 'reviewrole'),
+        (7, 'approverole'),
+        (8, 'processid'),
+        (9, 'assessmentteam1_name'),
+        (10, 'assessmentteam2_name'),
+        (11, 'reviewteam1_name'),
+        (12, 'approveteam1_name'),
+        (13, 'assessmentrolemol'),
+        (14, 'assessmentteammol_name'),
+        (15, 'reviewrole1'),
+        (16, 'reviewrole2'),
+        (17, 'reviewteam2'),
+        (18, 'monitoringrole1'),
+        (19, 'monitoringrole2'),
+        (20, 'monitoringteam1'),
+        (21, 'monitoringteam2'),
+        (22, 'assessment_subtype'),
+        (23, 'mis_source_table'),
+        (24, 'assessment_id'),
+        (25, 'assessment_no'),
+        (26, 'application_id'),
+        (27, 'monitoring_id'),
+        (28, 'site_visit_parent_id'),
+        (29, 'company_id'),
+        (30, 'application_no_name'),
+        (31, 'monitoring_ref_name'),
+        (32, 'payment_ref_name'),
+        (33, 'owner_name'),
+        (34, 'sp_name'),
+        (35, 'site_visit_date'),
+        (36, 'site_visit_type'),
+        (37, 'virtually_verified'),
+        (38, 'on_hold'),
+        (39, 'workflow_status'),
+        (40, 'state'),
+        (41, 'submit_request_on'),
+        (42, 'submit_results_on'),
+        (43, 'close_request_on'),
+        (44, 'submit_request_by'),
+        (45, 'submit_results_by'),
+        (46, 'close_request_by'),
+        (47, 'monitoring_revenue_t1'),
+        (48, 'monitoring_revenue_t'),
+        (49, 'monitoring_profit_t1'),
+        (50, 'monitoring_profit_t'),
+        (51, 'monitoring_reward_percentage'),
+        (52, 'monitoring_reward_score'),
+        (53, 'monitoring_total_employees'),
+        (54, 'monitoring_bahrainis_count'),
+        (55, 'monitoring_non_bahrainis_count'),
+        (56, 'monitoring_disabled_bahrainis'),
+        (57, 'monitoring_eligible'),
+        (58, 'monitoring_audited_financial'),
+        (59, 'source_system_name'),
+        (60, 'is_deleted'),
+        (61, 'report_date'),
+        (62, 'dbt_updated_at'),
+        (63, 'createdon'),
+        (64, 'updatedon')
+),
+
+silver_columns(column_position, column_name) AS (
+    VALUES
+        (1, 'id'),
+        (2, 'applicationid'),
+        (3, 'amendmentrequestid'),
+        (4, 'assessmentrole1'),
+        (5, 'assessmentrole2'),
+        (6, 'reviewrole'),
+        (7, 'approverole'),
+        (8, 'processid'),
+        (9, 'assessmentteam1_name'),
+        (10, 'assessmentteam2_name'),
+        (11, 'reviewteam1_name'),
+        (12, 'approveteam1_name'),
+        (13, 'assessmentrolemol'),
+        (14, 'assessmentteammol_name'),
+        (15, 'reviewrole1'),
+        (16, 'reviewrole2'),
+        (17, 'reviewteam2'),
+        (18, 'monitoringrole1'),
+        (19, 'monitoringrole2'),
+        (20, 'monitoringteam1'),
+        (21, 'monitoringteam2'),
+        (22, 'assessment_subtype'),
+        (23, 'mis_source_table'),
+        (24, 'assessment_id'),
+        (25, 'assessment_no'),
+        (26, 'application_id'),
+        (27, 'monitoring_id'),
+        (28, 'site_visit_parent_id'),
+        (29, 'company_id'),
+        (30, 'application_no_name'),
+        (31, 'monitoring_ref_name'),
+        (32, 'payment_ref_name'),
+        (33, 'owner_name'),
+        (34, 'sp_name'),
+        (35, 'site_visit_date'),
+        (36, 'site_visit_type'),
+        (37, 'virtually_verified'),
+        (38, 'on_hold'),
+        (39, 'workflow_status'),
+        (40, 'state'),
+        (41, 'submit_request_on'),
+        (42, 'submit_results_on'),
+        (43, 'close_request_on'),
+        (44, 'submit_request_by'),
+        (45, 'submit_results_by'),
+        (46, 'close_request_by'),
+        (47, 'monitoring_revenue_t1'),
+        (48, 'monitoring_revenue_t'),
+        (49, 'monitoring_profit_t1'),
+        (50, 'monitoring_profit_t'),
+        (51, 'monitoring_reward_percentage'),
+        (52, 'monitoring_reward_score'),
+        (53, 'monitoring_total_employees'),
+        (54, 'monitoring_bahrainis_count'),
+        (55, 'monitoring_non_bahrainis_count'),
+        (56, 'monitoring_disabled_bahrainis'),
+        (57, 'monitoring_eligible'),
+        (58, 'monitoring_audited_financial'),
+        (59, 'source_system_name'),
+        (60, 'is_deleted'),
+        (61, 'report_date'),
+        (62, 'dbt_updated_at'),
+        (63, 'createdon'),
+        (64, 'updatedon')
+),
+
+bronze_normalized AS (
+    SELECT
+        CAST("id" AS VARCHAR) AS "id",
+        CAST("applicationid" AS VARCHAR) AS "applicationid",
+        CAST("amendmentrequestid" AS VARCHAR) AS "amendmentrequestid",
+        CAST("assessmentrole1" AS VARCHAR) AS "assessmentrole1",
+        CAST("assessmentrole2" AS VARCHAR) AS "assessmentrole2",
+        CAST("reviewrole" AS VARCHAR) AS "reviewrole",
+        CAST("approverole" AS VARCHAR) AS "approverole",
+        CAST("processid" AS VARCHAR) AS "processid",
+        CAST("assessmentteam1_name" AS VARCHAR) AS "assessmentteam1_name",
+        CAST("assessmentteam2_name" AS VARCHAR) AS "assessmentteam2_name",
+        CAST("reviewteam1_name" AS VARCHAR) AS "reviewteam1_name",
+        CAST("approveteam1_name" AS VARCHAR) AS "approveteam1_name",
+        CAST("assessmentrolemol" AS VARCHAR) AS "assessmentrolemol",
+        CAST("assessmentteammol_name" AS VARCHAR) AS "assessmentteammol_name",
+        CAST("reviewrole1" AS VARCHAR) AS "reviewrole1",
+        CAST("reviewrole2" AS VARCHAR) AS "reviewrole2",
+        CAST("reviewteam2" AS VARCHAR) AS "reviewteam2",
+        CAST("monitoringrole1" AS VARCHAR) AS "monitoringrole1",
+        CAST("monitoringrole2" AS VARCHAR) AS "monitoringrole2",
+        CAST("monitoringteam1" AS VARCHAR) AS "monitoringteam1",
+        CAST("monitoringteam2" AS VARCHAR) AS "monitoringteam2",
+        CAST("assessment_subtype" AS VARCHAR) AS "assessment_subtype",
+        CAST("mis_source_table" AS VARCHAR) AS "mis_source_table",
+        CAST("assessment_id" AS VARCHAR) AS "assessment_id",
+        CAST("assessment_no" AS VARCHAR) AS "assessment_no",
+        CAST("application_id" AS VARCHAR) AS "application_id",
+        CAST("monitoring_id" AS VARCHAR) AS "monitoring_id",
+        CAST("site_visit_parent_id" AS VARCHAR) AS "site_visit_parent_id",
+        CAST("company_id" AS VARCHAR) AS "company_id",
+        CAST("application_no_name" AS VARCHAR) AS "application_no_name",
+        CAST("monitoring_ref_name" AS VARCHAR) AS "monitoring_ref_name",
+        CAST("payment_ref_name" AS VARCHAR) AS "payment_ref_name",
+        CAST("owner_name" AS VARCHAR) AS "owner_name",
+        CAST("sp_name" AS VARCHAR) AS "sp_name",
+        CAST("site_visit_date" AS VARCHAR) AS "site_visit_date",
+        CAST("site_visit_type" AS VARCHAR) AS "site_visit_type",
+        CAST("virtually_verified" AS VARCHAR) AS "virtually_verified",
+        CAST("on_hold" AS VARCHAR) AS "on_hold",
+        CAST("workflow_status" AS VARCHAR) AS "workflow_status",
+        CAST("state" AS VARCHAR) AS "state",
+        CAST("submit_request_on" AS VARCHAR) AS "submit_request_on",
+        CAST("submit_results_on" AS VARCHAR) AS "submit_results_on",
+        CAST("close_request_on" AS VARCHAR) AS "close_request_on",
+        CAST("submit_request_by" AS VARCHAR) AS "submit_request_by",
+        CAST("submit_results_by" AS VARCHAR) AS "submit_results_by",
+        CAST("close_request_by" AS VARCHAR) AS "close_request_by",
+        CAST("monitoring_revenue_t1" AS VARCHAR) AS "monitoring_revenue_t1",
+        CAST("monitoring_revenue_t" AS VARCHAR) AS "monitoring_revenue_t",
+        CAST("monitoring_profit_t1" AS VARCHAR) AS "monitoring_profit_t1",
+        CAST("monitoring_profit_t" AS VARCHAR) AS "monitoring_profit_t",
+        CAST("monitoring_reward_percentage" AS VARCHAR) AS "monitoring_reward_percentage",
+        CAST("monitoring_reward_score" AS VARCHAR) AS "monitoring_reward_score",
+        CAST("monitoring_total_employees" AS VARCHAR) AS "monitoring_total_employees",
+        CAST("monitoring_bahrainis_count" AS VARCHAR) AS "monitoring_bahrainis_count",
+        CAST("monitoring_non_bahrainis_count" AS VARCHAR) AS "monitoring_non_bahrainis_count",
+        CAST("monitoring_disabled_bahrainis" AS VARCHAR) AS "monitoring_disabled_bahrainis",
+        CAST("monitoring_eligible" AS VARCHAR) AS "monitoring_eligible",
+        CAST("monitoring_audited_financial" AS VARCHAR) AS "monitoring_audited_financial",
+        CAST("source_system_name" AS VARCHAR) AS "source_system_name",
+        CAST("is_deleted" AS VARCHAR) AS "is_deleted",
+        CAST("report_date" AS VARCHAR) AS "report_date",
+        CAST("dbt_updated_at" AS VARCHAR) AS "dbt_updated_at",
+        CAST("createdon" AS VARCHAR) AS "createdon",
+        CAST("updatedon" AS VARCHAR) AS "updatedon"
+    FROM bronze_layer
+),
+
+silver_normalized AS (
+    SELECT
+        CAST("id" AS VARCHAR) AS "id",
+        CAST("applicationid" AS VARCHAR) AS "applicationid",
+        CAST("amendmentrequestid" AS VARCHAR) AS "amendmentrequestid",
+        CAST("assessmentrole1" AS VARCHAR) AS "assessmentrole1",
+        CAST("assessmentrole2" AS VARCHAR) AS "assessmentrole2",
+        CAST("reviewrole" AS VARCHAR) AS "reviewrole",
+        CAST("approverole" AS VARCHAR) AS "approverole",
+        CAST("processid" AS VARCHAR) AS "processid",
+        CAST("assessmentteam1_name" AS VARCHAR) AS "assessmentteam1_name",
+        CAST("assessmentteam2_name" AS VARCHAR) AS "assessmentteam2_name",
+        CAST("reviewteam1_name" AS VARCHAR) AS "reviewteam1_name",
+        CAST("approveteam1_name" AS VARCHAR) AS "approveteam1_name",
+        CAST("assessmentrolemol" AS VARCHAR) AS "assessmentrolemol",
+        CAST("assessmentteammol_name" AS VARCHAR) AS "assessmentteammol_name",
+        CAST("reviewrole1" AS VARCHAR) AS "reviewrole1",
+        CAST("reviewrole2" AS VARCHAR) AS "reviewrole2",
+        CAST("reviewteam2" AS VARCHAR) AS "reviewteam2",
+        CAST("monitoringrole1" AS VARCHAR) AS "monitoringrole1",
+        CAST("monitoringrole2" AS VARCHAR) AS "monitoringrole2",
+        CAST("monitoringteam1" AS VARCHAR) AS "monitoringteam1",
+        CAST("monitoringteam2" AS VARCHAR) AS "monitoringteam2",
+        CAST("assessment_subtype" AS VARCHAR) AS "assessment_subtype",
+        CAST("mis_source_table" AS VARCHAR) AS "mis_source_table",
+        CAST("assessment_id" AS VARCHAR) AS "assessment_id",
+        CAST("assessment_no" AS VARCHAR) AS "assessment_no",
+        CAST("application_id" AS VARCHAR) AS "application_id",
+        CAST("monitoring_id" AS VARCHAR) AS "monitoring_id",
+        CAST("site_visit_parent_id" AS VARCHAR) AS "site_visit_parent_id",
+        CAST("company_id" AS VARCHAR) AS "company_id",
+        CAST("application_no_name" AS VARCHAR) AS "application_no_name",
+        CAST("monitoring_ref_name" AS VARCHAR) AS "monitoring_ref_name",
+        CAST("payment_ref_name" AS VARCHAR) AS "payment_ref_name",
+        CAST("owner_name" AS VARCHAR) AS "owner_name",
+        CAST("sp_name" AS VARCHAR) AS "sp_name",
+        CAST("site_visit_date" AS VARCHAR) AS "site_visit_date",
+        CAST("site_visit_type" AS VARCHAR) AS "site_visit_type",
+        CAST("virtually_verified" AS VARCHAR) AS "virtually_verified",
+        CAST("on_hold" AS VARCHAR) AS "on_hold",
+        CAST("workflow_status" AS VARCHAR) AS "workflow_status",
+        CAST("state" AS VARCHAR) AS "state",
+        CAST("submit_request_on" AS VARCHAR) AS "submit_request_on",
+        CAST("submit_results_on" AS VARCHAR) AS "submit_results_on",
+        CAST("close_request_on" AS VARCHAR) AS "close_request_on",
+        CAST("submit_request_by" AS VARCHAR) AS "submit_request_by",
+        CAST("submit_results_by" AS VARCHAR) AS "submit_results_by",
+        CAST("close_request_by" AS VARCHAR) AS "close_request_by",
+        CAST("monitoring_revenue_t1" AS VARCHAR) AS "monitoring_revenue_t1",
+        CAST("monitoring_revenue_t" AS VARCHAR) AS "monitoring_revenue_t",
+        CAST("monitoring_profit_t1" AS VARCHAR) AS "monitoring_profit_t1",
+        CAST("monitoring_profit_t" AS VARCHAR) AS "monitoring_profit_t",
+        CAST("monitoring_reward_percentage" AS VARCHAR) AS "monitoring_reward_percentage",
+        CAST("monitoring_reward_score" AS VARCHAR) AS "monitoring_reward_score",
+        CAST("monitoring_total_employees" AS VARCHAR) AS "monitoring_total_employees",
+        CAST("monitoring_bahrainis_count" AS VARCHAR) AS "monitoring_bahrainis_count",
+        CAST("monitoring_non_bahrainis_count" AS VARCHAR) AS "monitoring_non_bahrainis_count",
+        CAST("monitoring_disabled_bahrainis" AS VARCHAR) AS "monitoring_disabled_bahrainis",
+        CAST("monitoring_eligible" AS VARCHAR) AS "monitoring_eligible",
+        CAST("monitoring_audited_financial" AS VARCHAR) AS "monitoring_audited_financial",
+        CAST("source_system_name" AS VARCHAR) AS "source_system_name",
+        CAST("is_deleted" AS VARCHAR) AS "is_deleted",
+        CAST("report_date" AS VARCHAR) AS "report_date",
+        CAST("dbt_updated_at" AS VARCHAR) AS "dbt_updated_at",
+        CAST("createdon" AS VARCHAR) AS "createdon",
+        CAST("updatedon" AS VARCHAR) AS "updatedon"
+    FROM silver_layer
+),
+
+bronze_minus_silver AS (
+    SELECT * FROM bronze_normalized
+    EXCEPT ALL
+    SELECT * FROM silver_normalized
+),
+
+silver_minus_bronze AS (
+    SELECT * FROM silver_normalized
+    EXCEPT ALL
+    SELECT * FROM bronze_normalized
+),
+
+validation_results AS (
+    SELECT
+        'assessment_base' AS table_name,
+        'record_count' AS validation_point,
+        CAST((SELECT COUNT(*) FROM bronze_layer) AS BIGINT) AS bronze_layer_count,
+        CAST((SELECT COUNT(*) FROM silver_layer) AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM bronze_layer) = (SELECT COUNT(*) FROM silver_layer) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'assessment_base' AS table_name,
+        'column_count' AS validation_point,
+        CAST((SELECT COUNT(*) FROM bronze_columns) AS BIGINT) AS bronze_layer_count,
+        CAST((SELECT COUNT(*) FROM silver_columns) AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM bronze_columns) = (SELECT COUNT(*) FROM silver_columns) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'assessment_base' AS table_name,
+        'column_names_match' AS validation_point,
+        CAST((
+            SELECT COUNT(*)
+            FROM bronze_columns b
+            FULL OUTER JOIN silver_columns s
+              ON b.column_position = s.column_position
+             AND b.column_name = s.column_name
+            WHERE b.column_name IS NULL OR s.column_name IS NULL
+        ) AS BIGINT) AS bronze_layer_count,
+        CAST(0 AS BIGINT) AS silver_layer_count,
+        CASE WHEN NOT EXISTS (
+            SELECT 1
+            FROM bronze_columns b
+            FULL OUTER JOIN silver_columns s
+              ON b.column_position = s.column_position
+             AND b.column_name = s.column_name
+            WHERE b.column_name IS NULL OR s.column_name IS NULL
+        ) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'assessment_base' AS table_name,
+        'mismatching_rows_bronze_minus_silver' AS validation_point,
+        CAST((SELECT COUNT(*) FROM bronze_minus_silver) AS BIGINT) AS bronze_layer_count,
+        CAST(0 AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM bronze_minus_silver) = 0 THEN 'PASS' ELSE 'FAIL' END AS validation_status
+
+    UNION ALL
+
+    SELECT
+        'assessment_base' AS table_name,
+        'mismatching_rows_silver_minus_bronze' AS validation_point,
+        CAST(0 AS BIGINT) AS bronze_layer_count,
+        CAST((SELECT COUNT(*) FROM silver_minus_bronze) AS BIGINT) AS silver_layer_count,
+        CASE WHEN (SELECT COUNT(*) FROM silver_minus_bronze) = 0 THEN 'PASS' ELSE 'FAIL' END AS validation_status
+)
+
+SELECT *
+FROM validation_results
+ORDER BY validation_point;
