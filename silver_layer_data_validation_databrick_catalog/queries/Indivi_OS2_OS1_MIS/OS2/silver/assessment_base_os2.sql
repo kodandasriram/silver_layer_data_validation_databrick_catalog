@@ -1,1 +1,0 @@
-select * from dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".assessment_base_os2 

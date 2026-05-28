@@ -1,37 +1,18 @@
-﻿-- Compare bronze-layer query output with silver-layer table output for amendment_base.
--- Validations included:
---   1. Record counts for bronze_layer and silver_layer.
---   2. Column counts for bronze_layer and silver_layer.
---   3. Column name/order match flag.
---   4. Mismatching row counts in each direction after casting all compared columns to VARCHAR.
---
--- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\union of os2_os1_mis\amendment_base_os2_os1_mis_union_bronze_layer.sql
--- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\amendment_base_silver_layer.sql
--- NOTE: Generated with only the 58 common columns for data mismatch counts because source column names/order differ.
-
-
 WITH
-bronze_layer AS (
--- Bronze-layer UNION ALL for amendment_base across OS2, OS1, and MIS.
--- Output column order follows the amendment_base silver/dbt comparison shape.
--- Note: no OS1 amendment_base source was present in the supplied/current OS1 scripts.
--- The OS1 branch is kept as a typed zero-row branch so the source is planned
--- explicitly without inventing a table or business logic.
-
-WITH option_set_values AS (
+option_set_values AS (
     SELECT
-        LOWER(elv.name) || '|' || LOWER(sm.attributename) || '|' || CAST(sm.attributevalue AS VARCHAR) AS option_key,
+        LOWER(elv.name) || '|' || LOWER(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
         MAX(sm.value) AS option_value
-    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".STRINGMAP sm
-    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".ENTITYLOGICALVIEW elv
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
         ON sm.objecttypecode = elv.objecttypecode
     WHERE sm.attributevalue IS NOT NULL
       AND sm.value IS NOT NULL
     GROUP BY
-        LOWER(elv.name) || '|' || LOWER(sm.attributename) || '|' || CAST(sm.attributevalue AS VARCHAR)
+        LOWER(elv.name) || '|' || LOWER(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
 ),
 option_set_map AS (
-    SELECT MAP_AGG(option_key, option_value) AS option_values
+    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
     FROM option_set_values
 ),
 os2_combined_app AS (
@@ -84,27 +65,27 @@ os2_combined_app AS (
             WHEN APP.SPENDINGPERIODDUEDATE = TIMESTAMP '1900-01-01 00:00:00.000' THEN NULL
             ELSE APP.SPENDINGPERIODDUEDATE + INTERVAL '3' HOUR
         END AS spending_period_end_date,
-        CAST(NULL AS VARCHAR) AS approval_letter_confirmed,
+        CAST(NULL AS STRING) AS approval_letter_confirmed,
         'NEO2' AS source_system_name,
         FALSE AS is_deleted,
         CURRENT_DATE AS report_date,
-        CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
-    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_APPLICATION APP
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_3QQ_PROGRAMVERSION PROGVER
+        CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION APP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION PROGVER
         ON APP.PROGRAMVERSIONID = PROGVER.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_3QQ_PROGRAM PROGRAM
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM PROGRAM
         ON PROGVER.PROGRAMID = PROGRAM.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
         ON APPCUS.APPLICATIONID = APP.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
         ON APPCUS.CUSTOMERPROFILEID = CUSPROF.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMER CUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER CUS
         ON CUSPROF.CUSTOMERID = CUS.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_398_APPLICATIONSTATUS APST
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS APST
         ON APP.APPLICATIONSTATUSID = APST.CODE
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_INDIVIDUAL IND
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL IND
         ON CUSPROF.CUSTOMERID = IND.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_COMPANY CMP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY CMP
         ON CUSPROF.CUSTOMERID = CMP.ID
 
     UNION ALL
@@ -158,29 +139,29 @@ os2_combined_app AS (
             WHEN APP.SPENDINGPERIODDUEDATE = TIMESTAMP '1900-01-01 00:00:00.000' THEN NULL
             ELSE APP.SPENDINGPERIODDUEDATE + INTERVAL '3' HOUR
         END AS spending_period_end_date,
-        CAST(NULL AS VARCHAR) AS approval_letter_confirmed,
+        CAST(NULL AS STRING) AS approval_letter_confirmed,
         'NEO2' AS source_system_name,
         FALSE AS is_deleted,
         CURRENT_DATE AS report_date,
-        CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_at
-    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_APPLICATION APP
-    INNER JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_AMENDMENTREQUEST AMED
+        CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION APP
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_AMENDMENTREQUEST AMED
         ON AMED.APPLICATIONID = APP.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_3QQ_PROGRAMVERSION PROGVER
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION PROGVER
         ON APP.PROGRAMVERSIONID = PROGVER.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_3QQ_PROGRAM PROGRAM
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM PROGRAM
         ON PROGVER.PROGRAMID = PROGRAM.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
         ON APPCUS.APPLICATIONID = APP.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
         ON APPCUS.CUSTOMERPROFILEID = CUSPROF.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_CUSTOMER CUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER CUS
         ON CUSPROF.CUSTOMERID = CUS.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_INDIVIDUAL IND
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL IND
         ON CUSPROF.CUSTOMERID = IND.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_ZMZ_COMPANY CMP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY CMP
         ON CUSPROF.CUSTOMERID = CMP.ID
-    LEFT JOIN dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".OSUSR_398_APPLICATIONSTATUS APST
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS APST
         ON AMED.AMENDMENTSTATUSID = APST.CODE
     WHERE APST.LABEL = 'Active'
 ),
@@ -211,14 +192,14 @@ os2_data AS (
         haswagesupportmolemployees,
         cpr_number,
         customer_enterprise_name,
-        TRY_CAST(NULLIF(CAST(approved_on_date AS VARCHAR), '') AS TIMESTAMP) AS approved_on_date,
-        TRY_CAST(NULLIF(CAST(contract_start_date AS VARCHAR), '') AS TIMESTAMP) AS contract_start_date,
-        TRY_CAST(NULLIF(CAST(monitoring_due_date AS VARCHAR), '') AS TIMESTAMP) AS monitoring_due_date,
-        TRY_CAST(NULLIF(CAST(contract_end_date AS VARCHAR), '') AS TIMESTAMP) AS contract_end_date,
+        TRY_CAST(NULLIF(CAST(approved_on_date AS STRING), '') AS TIMESTAMP) AS approved_on_date,
+        TRY_CAST(NULLIF(CAST(contract_start_date AS STRING), '') AS TIMESTAMP) AS contract_start_date,
+        TRY_CAST(NULLIF(CAST(monitoring_due_date AS STRING), '') AS TIMESTAMP) AS monitoring_due_date,
+        TRY_CAST(NULLIF(CAST(contract_end_date AS STRING), '') AS TIMESTAMP) AS contract_end_date,
         total_approved_amount_tamkeen_share,
-        TRY_CAST(NULLIF(CAST(created_on AS VARCHAR), '') AS TIMESTAMP) AS created_on,
-        TRY_CAST(NULLIF(CAST(submitted_on AS VARCHAR), '') AS TIMESTAMP) AS submitted_on,
-        TRY_CAST(NULLIF(CAST(spending_period_end_date AS VARCHAR), '') AS TIMESTAMP) AS spending_period_end_date,
+        TRY_CAST(NULLIF(CAST(created_on AS STRING), '') AS TIMESTAMP) AS created_on,
+        TRY_CAST(NULLIF(CAST(submitted_on AS STRING), '') AS TIMESTAMP) AS submitted_on,
+        TRY_CAST(NULLIF(CAST(spending_period_end_date AS STRING), '') AS TIMESTAMP) AS spending_period_end_date,
         approval_letter_confirmed,
         dbt_updated_at,
         source_system_name,
@@ -229,11 +210,11 @@ os2_data AS (
 ),
 os1_data AS (
     SELECT
-        CAST(NULL AS VARCHAR) AS program_name,
-        CAST(NULL AS VARCHAR) AS program_type,
-        CAST(NULL AS VARCHAR) AS reference,
+        CAST(NULL AS STRING) AS program_name,
+        CAST(NULL AS STRING) AS program_type,
+        CAST(NULL AS STRING) AS reference,
         CAST(NULL AS BIGINT) AS application_id,
-        CAST(NULL AS VARCHAR) AS application_status,
+        CAST(NULL AS STRING) AS application_status,
         CAST(NULL AS BIGINT) AS amendmentno,
         CAST(NULL AS DECIMAL(38, 10)) AS utilizedamount,
         CAST(NULL AS DECIMAL(38, 10)) AS unutilizedamount,
@@ -243,8 +224,8 @@ os1_data AS (
         CAST(NULL AS DECIMAL(38, 10)) AS unutilizedamt,
         CAST(NULL AS DECIMAL(38, 10)) AS customershareamt,
         CAST(NULL AS BOOLEAN) AS haswagesupportmolemployees,
-        CAST(NULL AS VARCHAR) AS cpr_number,
-        CAST(NULL AS VARCHAR) AS customer_enterprise_name,
+        CAST(NULL AS STRING) AS cpr_number,
+        CAST(NULL AS STRING) AS customer_enterprise_name,
         CAST(NULL AS TIMESTAMP) AS approved_on_date,
         CAST(NULL AS TIMESTAMP) AS contract_start_date,
         CAST(NULL AS TIMESTAMP) AS monitoring_due_date,
@@ -253,7 +234,7 @@ os1_data AS (
         CAST(NULL AS TIMESTAMP) AS created_on,
         CAST(NULL AS TIMESTAMP) AS submitted_on,
         CAST(NULL AS TIMESTAMP) AS spending_period_end_date,
-        CAST(NULL AS VARCHAR) AS approval_letter_confirmed,
+        CAST(NULL AS STRING) AS approval_letter_confirmed,
         CAST(NULL AS TIMESTAMP) AS dbt_updated_at,
         'NEO1' AS source_system_name,
         CAST(FALSE AS BOOLEAN) AS is_deleted,
@@ -264,7 +245,7 @@ os1_data AS (
 mis_data AS (
     SELECT
         'tmkn_amendment' AS mis_source_table,
-        CAST(amnd.tmkn_amendmentid AS VARCHAR) AS amendment_id,
+        CAST(amnd.tmkn_amendmentid AS STRING) AS amendment_id,
         amnd.tmkn_name AS amendment_name,
         amnd.tmkn_application AS application_name,
         amnd.tmkn_maincompany AS main_company_name,
@@ -275,15 +256,15 @@ mis_data AS (
         amnd.tmkn_tamkeenshare AS tamkeen_share,
         amnd.tmkn_tamkeenshare_state AS tamkeen_share_state,
         amnd.tmkn_tamkeenshare_date AS tamkeen_share_last_updated_on,
-        CASE WHEN amnd.tmkn_amedned IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_amendmentbase') || '|' || CAST(amnd.tmkn_amedned AS VARCHAR)) END AS amended_flag,
-        CASE WHEN amnd.tmkn_products IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_products') || '|' || CAST(amnd.tmkn_products AS VARCHAR)) END AS products,
-        CASE WHEN amnd.tmkn_amendmentreason IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_amendmentreason') || '|' || CAST(amnd.tmkn_amendmentreason AS VARCHAR)) END AS amendment_reason,
-        CASE WHEN amnd.mis_workflowstatus IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('mis_workflowstatus') || '|' || CAST(amnd.mis_workflowstatus AS VARCHAR)) END AS old_workflow_status,
-        CASE WHEN amnd.tmkn_reason IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_reason') || '|' || CAST(amnd.tmkn_reason AS VARCHAR)) END AS reason,
-        CASE WHEN amnd.tmkn_type IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_type') || '|' || CAST(amnd.tmkn_type AS VARCHAR)) END AS amendment_type,
-        CASE WHEN amnd.tmkn_workflowstatus IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_workflowstatus') || '|' || CAST(amnd.tmkn_workflowstatus AS VARCHAR)) END AS workflow_status,
-        CASE WHEN amnd.statuscode IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('statuscode') || '|' || CAST(amnd.statuscode AS VARCHAR)) END AS status_reason,
-        CASE WHEN amnd.statecode IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('statecode') || '|' || CAST(amnd.statecode AS VARCHAR)) END AS state,
+        CASE WHEN amnd.tmkn_amedned IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_amendmentbase') || '|' || CAST(amnd.tmkn_amedned AS STRING)) END AS amended_flag,
+        CASE WHEN amnd.tmkn_products IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_products') || '|' || CAST(amnd.tmkn_products AS STRING)) END AS products,
+        CASE WHEN amnd.tmkn_amendmentreason IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_amendmentreason') || '|' || CAST(amnd.tmkn_amendmentreason AS STRING)) END AS amendment_reason,
+        CASE WHEN amnd.mis_workflowstatus IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('mis_workflowstatus') || '|' || CAST(amnd.mis_workflowstatus AS STRING)) END AS old_workflow_status,
+        CASE WHEN amnd.tmkn_reason IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_reason') || '|' || CAST(amnd.tmkn_reason AS STRING)) END AS reason,
+        CASE WHEN amnd.tmkn_type IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_type') || '|' || CAST(amnd.tmkn_type AS STRING)) END AS amendment_type,
+        CASE WHEN amnd.tmkn_workflowstatus IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('tmkn_workflowstatus') || '|' || CAST(amnd.tmkn_workflowstatus AS STRING)) END AS workflow_status,
+        CASE WHEN amnd.statuscode IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('statuscode') || '|' || CAST(amnd.statuscode AS STRING)) END AS status_reason,
+        CASE WHEN amnd.statecode IS NULL THEN NULL ELSE ELEMENT_AT((SELECT option_values FROM option_set_map), LOWER('TMKN_AMENDMENTBASE') || '|' || LOWER('statecode') || '|' || CAST(amnd.statecode AS STRING)) END AS state,
         amnd.ownerid AS owner_name,
         amnd.identity_createdby AS identity_created_by,
         amnd.identity_modifiedby AS identity_modified_by,
@@ -296,9 +277,15 @@ mis_data AS (
         'MIS' AS source_system_name,
         FALSE AS is_deleted,
         CAST(CURRENT_DATE AS TIMESTAMP) AS report_date,
-        CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP) AS dbt_updated_on
-    FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-bronze".TMKN_AMENDMENTBASE amnd
-)
+        CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_on
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_AMENDMENTBASE amnd
+),
+-- Bronze-layer UNION ALL for amendment_base across OS2, OS1, and MIS.
+-- Output column order follows the amendment_base silver/dbt comparison shape.
+-- Note: no OS1 amendment_base source was present in the supplied/current OS1 scripts.
+-- The OS1 branch is kept as a typed zero-row branch so the source is planned
+-- explicitly without inventing a table or business logic.
+bronze_layer AS (
 SELECT
     program_name,
     program_type,
@@ -326,32 +313,32 @@ SELECT
     spending_period_end_date,
     approval_letter_confirmed,
     dbt_updated_at,
-    CAST(NULL AS VARCHAR) AS mis_source_table,
-    CAST(NULL AS VARCHAR) AS amendment_id,
-    CAST(NULL AS VARCHAR) AS amendment_name,
-    CAST(NULL AS VARCHAR) AS application_name,
-    CAST(NULL AS VARCHAR) AS main_company_name,
-    CAST(NULL AS VARCHAR) AS details,
+    CAST(NULL AS STRING) AS mis_source_table,
+    CAST(NULL AS STRING) AS amendment_id,
+    CAST(NULL AS STRING) AS amendment_name,
+    CAST(NULL AS STRING) AS application_name,
+    CAST(NULL AS STRING) AS main_company_name,
+    CAST(NULL AS STRING) AS details,
     CAST(NULL AS DECIMAL(38, 10)) AS total_amount,
     CAST(NULL AS DECIMAL(38, 10)) AS total_bc_share,
     CAST(NULL AS DECIMAL(38, 10)) AS total_tamkeen_share,
     CAST(NULL AS DECIMAL(38, 10)) AS tamkeen_share,
     CAST(NULL AS INTEGER) AS tamkeen_share_state,
     CAST(NULL AS TIMESTAMP) AS tamkeen_share_last_updated_on,
-    CAST(NULL AS VARCHAR) AS amended_flag,
-    CAST(NULL AS VARCHAR) AS products,
-    CAST(NULL AS VARCHAR) AS amendment_reason,
-    CAST(NULL AS VARCHAR) AS old_workflow_status,
-    CAST(NULL AS VARCHAR) AS reason,
-    CAST(NULL AS VARCHAR) AS amendment_type,
-    CAST(NULL AS VARCHAR) AS workflow_status,
-    CAST(NULL AS VARCHAR) AS status_reason,
-    CAST(NULL AS VARCHAR) AS state,
-    CAST(NULL AS VARCHAR) AS owner_name,
-    CAST(NULL AS VARCHAR) AS identity_created_by,
-    CAST(NULL AS VARCHAR) AS identity_modified_by,
-    CAST(NULL AS VARCHAR) AS created_by,
-    CAST(NULL AS VARCHAR) AS modified_by,
+    CAST(NULL AS STRING) AS amended_flag,
+    CAST(NULL AS STRING) AS products,
+    CAST(NULL AS STRING) AS amendment_reason,
+    CAST(NULL AS STRING) AS old_workflow_status,
+    CAST(NULL AS STRING) AS reason,
+    CAST(NULL AS STRING) AS amendment_type,
+    CAST(NULL AS STRING) AS workflow_status,
+    CAST(NULL AS STRING) AS status_reason,
+    CAST(NULL AS STRING) AS state,
+    CAST(NULL AS STRING) AS owner_name,
+    CAST(NULL AS STRING) AS identity_created_by,
+    CAST(NULL AS STRING) AS identity_modified_by,
+    CAST(NULL AS STRING) AS created_by,
+    CAST(NULL AS STRING) AS modified_by,
     CAST(NULL AS TIMESTAMP) AS identity_created_on,
     CAST(NULL AS TIMESTAMP) AS identity_modified_on,
     CAST(NULL AS TIMESTAMP) AS modified_on,
@@ -390,32 +377,32 @@ SELECT
     spending_period_end_date,
     approval_letter_confirmed,
     dbt_updated_at,
-    CAST(NULL AS VARCHAR) AS mis_source_table,
-    CAST(NULL AS VARCHAR) AS amendment_id,
-    CAST(NULL AS VARCHAR) AS amendment_name,
-    CAST(NULL AS VARCHAR) AS application_name,
-    CAST(NULL AS VARCHAR) AS main_company_name,
-    CAST(NULL AS VARCHAR) AS details,
+    CAST(NULL AS STRING) AS mis_source_table,
+    CAST(NULL AS STRING) AS amendment_id,
+    CAST(NULL AS STRING) AS amendment_name,
+    CAST(NULL AS STRING) AS application_name,
+    CAST(NULL AS STRING) AS main_company_name,
+    CAST(NULL AS STRING) AS details,
     CAST(NULL AS DECIMAL(38, 10)) AS total_amount,
     CAST(NULL AS DECIMAL(38, 10)) AS total_bc_share,
     CAST(NULL AS DECIMAL(38, 10)) AS total_tamkeen_share,
     CAST(NULL AS DECIMAL(38, 10)) AS tamkeen_share,
     CAST(NULL AS INTEGER) AS tamkeen_share_state,
     CAST(NULL AS TIMESTAMP) AS tamkeen_share_last_updated_on,
-    CAST(NULL AS VARCHAR) AS amended_flag,
-    CAST(NULL AS VARCHAR) AS products,
-    CAST(NULL AS VARCHAR) AS amendment_reason,
-    CAST(NULL AS VARCHAR) AS old_workflow_status,
-    CAST(NULL AS VARCHAR) AS reason,
-    CAST(NULL AS VARCHAR) AS amendment_type,
-    CAST(NULL AS VARCHAR) AS workflow_status,
-    CAST(NULL AS VARCHAR) AS status_reason,
-    CAST(NULL AS VARCHAR) AS state,
-    CAST(NULL AS VARCHAR) AS owner_name,
-    CAST(NULL AS VARCHAR) AS identity_created_by,
-    CAST(NULL AS VARCHAR) AS identity_modified_by,
-    CAST(NULL AS VARCHAR) AS created_by,
-    CAST(NULL AS VARCHAR) AS modified_by,
+    CAST(NULL AS STRING) AS amended_flag,
+    CAST(NULL AS STRING) AS products,
+    CAST(NULL AS STRING) AS amendment_reason,
+    CAST(NULL AS STRING) AS old_workflow_status,
+    CAST(NULL AS STRING) AS reason,
+    CAST(NULL AS STRING) AS amendment_type,
+    CAST(NULL AS STRING) AS workflow_status,
+    CAST(NULL AS STRING) AS status_reason,
+    CAST(NULL AS STRING) AS state,
+    CAST(NULL AS STRING) AS owner_name,
+    CAST(NULL AS STRING) AS identity_created_by,
+    CAST(NULL AS STRING) AS identity_modified_by,
+    CAST(NULL AS STRING) AS created_by,
+    CAST(NULL AS STRING) AS modified_by,
     CAST(NULL AS TIMESTAMP) AS identity_created_on,
     CAST(NULL AS TIMESTAMP) AS identity_modified_on,
     CAST(NULL AS TIMESTAMP) AS modified_on,
@@ -428,11 +415,11 @@ FROM os1_data
 UNION ALL
 
 SELECT
-    CAST(NULL AS VARCHAR) AS program_name,
-    CAST(NULL AS VARCHAR) AS program_type,
-    CAST(NULL AS VARCHAR) AS reference,
+    CAST(NULL AS STRING) AS program_name,
+    CAST(NULL AS STRING) AS program_type,
+    CAST(NULL AS STRING) AS reference,
     CAST(NULL AS BIGINT) AS application_id,
-    CAST(NULL AS VARCHAR) AS application_status,
+    CAST(NULL AS STRING) AS application_status,
     CAST(NULL AS BIGINT) AS amendmentno,
     CAST(NULL AS DECIMAL(38, 10)) AS utilizedamount,
     CAST(NULL AS DECIMAL(38, 10)) AS unutilizedamount,
@@ -442,8 +429,8 @@ SELECT
     CAST(NULL AS DECIMAL(38, 10)) AS unutilizedamt,
     CAST(NULL AS DECIMAL(38, 10)) AS customershareamt,
     CAST(NULL AS BOOLEAN) AS haswagesupportmolemployees,
-    CAST(NULL AS VARCHAR) AS cpr_number,
-    CAST(NULL AS VARCHAR) AS customer_enterprise_name,
+    CAST(NULL AS STRING) AS cpr_number,
+    CAST(NULL AS STRING) AS customer_enterprise_name,
     CAST(NULL AS TIMESTAMP) AS approved_on_date,
     CAST(NULL AS TIMESTAMP) AS contract_start_date,
     CAST(NULL AS TIMESTAMP) AS monitoring_due_date,
@@ -452,7 +439,7 @@ SELECT
     CAST(NULL AS TIMESTAMP) AS created_on,
     CAST(NULL AS TIMESTAMP) AS submitted_on,
     CAST(NULL AS TIMESTAMP) AS spending_period_end_date,
-    CAST(NULL AS VARCHAR) AS approval_letter_confirmed,
+    CAST(NULL AS STRING) AS approval_letter_confirmed,
     CAST(NULL AS TIMESTAMP) AS dbt_updated_at,
     mis_source_table,
     amendment_id,
@@ -550,7 +537,7 @@ SELECT
     source_system_name,
     is_deleted,
     report_date
-FROM dev_iceberg."tmkn-aws-dwh-dev-iceberg-silver".amendment_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.amendment_base
 ),
 
 bronze_columns(column_position, column_name) AS (
@@ -680,127 +667,127 @@ silver_columns(column_position, column_name) AS (
 
 bronze_normalized AS (
     SELECT
-        CAST("program_name" AS VARCHAR) AS "program_name",
-        CAST("program_type" AS VARCHAR) AS "program_type",
-        CAST("reference" AS VARCHAR) AS "reference",
-        CAST("application_id" AS VARCHAR) AS "application_id",
-        CAST("application_status" AS VARCHAR) AS "application_status",
-        CAST("amendmentno" AS VARCHAR) AS "amendmentno",
-        CAST("utilizedamount" AS VARCHAR) AS "utilizedamount",
-        CAST("unutilizedamount" AS VARCHAR) AS "unutilizedamount",
-        CAST("totalapprovedamount" AS VARCHAR) AS "totalapprovedamount",
-        CAST("totalavailableamt" AS VARCHAR) AS "totalavailableamt",
-        CAST("utilizedamt" AS VARCHAR) AS "utilizedamt",
-        CAST("unutilizedamt" AS VARCHAR) AS "unutilizedamt",
-        CAST("customershareamt" AS VARCHAR) AS "customershareamt",
-        CAST("haswagesupportmolemployees" AS VARCHAR) AS "haswagesupportmolemployees",
-        CAST("cpr_number" AS VARCHAR) AS "cpr_number",
-        CAST("customer_enterprise_name" AS VARCHAR) AS "customer_enterprise_name",
-        CAST("approved_on_date" AS VARCHAR) AS "approved_on_date",
-        CAST("contract_start_date" AS VARCHAR) AS "contract_start_date",
-        CAST("monitoring_due_date" AS VARCHAR) AS "monitoring_due_date",
-        CAST("contract_end_date" AS VARCHAR) AS "contract_end_date",
-        CAST("total_approved_amount_tamkeen_share" AS VARCHAR) AS "total_approved_amount_tamkeen_share",
-        CAST("created_on" AS VARCHAR) AS "created_on",
-        CAST("submitted_on" AS VARCHAR) AS "submitted_on",
-        CAST("spending_period_end_date" AS VARCHAR) AS "spending_period_end_date",
-        CAST("approval_letter_confirmed" AS VARCHAR) AS "approval_letter_confirmed",
-        CAST("dbt_updated_at" AS VARCHAR) AS "dbt_updated_at",
-        CAST("mis_source_table" AS VARCHAR) AS "mis_source_table",
-        CAST("amendment_id" AS VARCHAR) AS "amendment_id",
-        CAST("amendment_name" AS VARCHAR) AS "amendment_name",
-        CAST("application_name" AS VARCHAR) AS "application_name",
-        CAST("main_company_name" AS VARCHAR) AS "main_company_name",
-        CAST("details" AS VARCHAR) AS "details",
-        CAST("total_amount" AS VARCHAR) AS "total_amount",
-        CAST("total_bc_share" AS VARCHAR) AS "total_bc_share",
-        CAST("total_tamkeen_share" AS VARCHAR) AS "total_tamkeen_share",
-        CAST("tamkeen_share" AS VARCHAR) AS "tamkeen_share",
-        CAST("tamkeen_share_state" AS VARCHAR) AS "tamkeen_share_state",
-        CAST("tamkeen_share_last_updated_on" AS VARCHAR) AS "tamkeen_share_last_updated_on",
-        CAST("amended_flag" AS VARCHAR) AS "amended_flag",
-        CAST("products" AS VARCHAR) AS "products",
-        CAST("amendment_reason" AS VARCHAR) AS "amendment_reason",
-        CAST("old_workflow_status" AS VARCHAR) AS "old_workflow_status",
-        CAST("reason" AS VARCHAR) AS "reason",
-        CAST("amendment_type" AS VARCHAR) AS "amendment_type",
-        CAST("workflow_status" AS VARCHAR) AS "workflow_status",
-        CAST("status_reason" AS VARCHAR) AS "status_reason",
-        CAST("state" AS VARCHAR) AS "state",
-        CAST("owner_name" AS VARCHAR) AS "owner_name",
-        CAST("identity_created_by" AS VARCHAR) AS "identity_created_by",
-        CAST("identity_modified_by" AS VARCHAR) AS "identity_modified_by",
-        CAST("created_by" AS VARCHAR) AS "created_by",
-        CAST("modified_by" AS VARCHAR) AS "modified_by",
-        CAST("identity_created_on" AS VARCHAR) AS "identity_created_on",
-        CAST("identity_modified_on" AS VARCHAR) AS "identity_modified_on",
-        CAST("modified_on" AS VARCHAR) AS "modified_on",
-        CAST("source_system_name" AS VARCHAR) AS "source_system_name",
-        CAST("is_deleted" AS VARCHAR) AS "is_deleted",
-        CAST("report_date" AS VARCHAR) AS "report_date"
+        CAST(`program_name` AS STRING) AS `program_name`,
+        CAST(`program_type` AS STRING) AS `program_type`,
+        CAST(`reference` AS STRING) AS `reference`,
+        CAST(`application_id` AS STRING) AS `application_id`,
+        CAST(`application_status` AS STRING) AS `application_status`,
+        CAST(`amendmentno` AS STRING) AS `amendmentno`,
+        CAST(`utilizedamount` AS STRING) AS `utilizedamount`,
+        CAST(`unutilizedamount` AS STRING) AS `unutilizedamount`,
+        CAST(`totalapprovedamount` AS STRING) AS `totalapprovedamount`,
+        CAST(`totalavailableamt` AS STRING) AS `totalavailableamt`,
+        CAST(`utilizedamt` AS STRING) AS `utilizedamt`,
+        CAST(`unutilizedamt` AS STRING) AS `unutilizedamt`,
+        CAST(`customershareamt` AS STRING) AS `customershareamt`,
+        CAST(`haswagesupportmolemployees` AS STRING) AS `haswagesupportmolemployees`,
+        CAST(`cpr_number` AS STRING) AS `cpr_number`,
+        CAST(`customer_enterprise_name` AS STRING) AS `customer_enterprise_name`,
+        CAST(`approved_on_date` AS STRING) AS `approved_on_date`,
+        CAST(`contract_start_date` AS STRING) AS `contract_start_date`,
+        CAST(`monitoring_due_date` AS STRING) AS `monitoring_due_date`,
+        CAST(`contract_end_date` AS STRING) AS `contract_end_date`,
+        CAST(`total_approved_amount_tamkeen_share` AS STRING) AS `total_approved_amount_tamkeen_share`,
+        CAST(`created_on` AS STRING) AS `created_on`,
+        CAST(`submitted_on` AS STRING) AS `submitted_on`,
+        CAST(`spending_period_end_date` AS STRING) AS `spending_period_end_date`,
+        CAST(`approval_letter_confirmed` AS STRING) AS `approval_letter_confirmed`,
+        CAST(`dbt_updated_at` AS STRING) AS `dbt_updated_at`,
+        CAST(`mis_source_table` AS STRING) AS `mis_source_table`,
+        CAST(`amendment_id` AS STRING) AS `amendment_id`,
+        CAST(`amendment_name` AS STRING) AS `amendment_name`,
+        CAST(`application_name` AS STRING) AS `application_name`,
+        CAST(`main_company_name` AS STRING) AS `main_company_name`,
+        CAST(`details` AS STRING) AS `details`,
+        CAST(`total_amount` AS STRING) AS `total_amount`,
+        CAST(`total_bc_share` AS STRING) AS `total_bc_share`,
+        CAST(`total_tamkeen_share` AS STRING) AS `total_tamkeen_share`,
+        CAST(`tamkeen_share` AS STRING) AS `tamkeen_share`,
+        CAST(`tamkeen_share_state` AS STRING) AS `tamkeen_share_state`,
+        CAST(`tamkeen_share_last_updated_on` AS STRING) AS `tamkeen_share_last_updated_on`,
+        CAST(`amended_flag` AS STRING) AS `amended_flag`,
+        CAST(`products` AS STRING) AS `products`,
+        CAST(`amendment_reason` AS STRING) AS `amendment_reason`,
+        CAST(`old_workflow_status` AS STRING) AS `old_workflow_status`,
+        CAST(`reason` AS STRING) AS `reason`,
+        CAST(`amendment_type` AS STRING) AS `amendment_type`,
+        CAST(`workflow_status` AS STRING) AS `workflow_status`,
+        CAST(`status_reason` AS STRING) AS `status_reason`,
+        CAST(`state` AS STRING) AS `state`,
+        CAST(`owner_name` AS STRING) AS `owner_name`,
+        CAST(`identity_created_by` AS STRING) AS `identity_created_by`,
+        CAST(`identity_modified_by` AS STRING) AS `identity_modified_by`,
+        CAST(`created_by` AS STRING) AS `created_by`,
+        CAST(`modified_by` AS STRING) AS `modified_by`,
+        CAST(`identity_created_on` AS STRING) AS `identity_created_on`,
+        CAST(`identity_modified_on` AS STRING) AS `identity_modified_on`,
+        CAST(`modified_on` AS STRING) AS `modified_on`,
+        CAST(`source_system_name` AS STRING) AS `source_system_name`,
+        CAST(`is_deleted` AS STRING) AS `is_deleted`,
+        CAST(`report_date` AS STRING) AS `report_date`
     FROM bronze_layer
 ),
 
 silver_normalized AS (
     SELECT
-        CAST("program_name" AS VARCHAR) AS "program_name",
-        CAST("program_type" AS VARCHAR) AS "program_type",
-        CAST("reference" AS VARCHAR) AS "reference",
-        CAST("application_id" AS VARCHAR) AS "application_id",
-        CAST("application_status" AS VARCHAR) AS "application_status",
-        CAST("amendmentno" AS VARCHAR) AS "amendmentno",
-        CAST("utilizedamount" AS VARCHAR) AS "utilizedamount",
-        CAST("unutilizedamount" AS VARCHAR) AS "unutilizedamount",
-        CAST("totalapprovedamount" AS VARCHAR) AS "totalapprovedamount",
-        CAST("totalavailableamt" AS VARCHAR) AS "totalavailableamt",
-        CAST("utilizedamt" AS VARCHAR) AS "utilizedamt",
-        CAST("unutilizedamt" AS VARCHAR) AS "unutilizedamt",
-        CAST("customershareamt" AS VARCHAR) AS "customershareamt",
-        CAST("haswagesupportmolemployees" AS VARCHAR) AS "haswagesupportmolemployees",
-        CAST("cpr_number" AS VARCHAR) AS "cpr_number",
-        CAST("customer_enterprise_name" AS VARCHAR) AS "customer_enterprise_name",
-        CAST("approved_on_date" AS VARCHAR) AS "approved_on_date",
-        CAST("contract_start_date" AS VARCHAR) AS "contract_start_date",
-        CAST("monitoring_due_date" AS VARCHAR) AS "monitoring_due_date",
-        CAST("contract_end_date" AS VARCHAR) AS "contract_end_date",
-        CAST("total_approved_amount_tamkeen_share" AS VARCHAR) AS "total_approved_amount_tamkeen_share",
-        CAST("created_on" AS VARCHAR) AS "created_on",
-        CAST("submitted_on" AS VARCHAR) AS "submitted_on",
-        CAST("spending_period_end_date" AS VARCHAR) AS "spending_period_end_date",
-        CAST("approval_letter_confirmed" AS VARCHAR) AS "approval_letter_confirmed",
-        CAST("dbt_updated_at" AS VARCHAR) AS "dbt_updated_at",
-        CAST("mis_source_table" AS VARCHAR) AS "mis_source_table",
-        CAST("amendment_id" AS VARCHAR) AS "amendment_id",
-        CAST("amendment_name" AS VARCHAR) AS "amendment_name",
-        CAST("application_name" AS VARCHAR) AS "application_name",
-        CAST("main_company_name" AS VARCHAR) AS "main_company_name",
-        CAST("details" AS VARCHAR) AS "details",
-        CAST("total_amount" AS VARCHAR) AS "total_amount",
-        CAST("total_bc_share" AS VARCHAR) AS "total_bc_share",
-        CAST("total_tamkeen_share" AS VARCHAR) AS "total_tamkeen_share",
-        CAST("tamkeen_share" AS VARCHAR) AS "tamkeen_share",
-        CAST("tamkeen_share_state" AS VARCHAR) AS "tamkeen_share_state",
-        CAST("tamkeen_share_last_updated_on" AS VARCHAR) AS "tamkeen_share_last_updated_on",
-        CAST("amended_flag" AS VARCHAR) AS "amended_flag",
-        CAST("products" AS VARCHAR) AS "products",
-        CAST("amendment_reason" AS VARCHAR) AS "amendment_reason",
-        CAST("old_workflow_status" AS VARCHAR) AS "old_workflow_status",
-        CAST("reason" AS VARCHAR) AS "reason",
-        CAST("amendment_type" AS VARCHAR) AS "amendment_type",
-        CAST("workflow_status" AS VARCHAR) AS "workflow_status",
-        CAST("status_reason" AS VARCHAR) AS "status_reason",
-        CAST("state" AS VARCHAR) AS "state",
-        CAST("owner_name" AS VARCHAR) AS "owner_name",
-        CAST("identity_created_by" AS VARCHAR) AS "identity_created_by",
-        CAST("identity_modified_by" AS VARCHAR) AS "identity_modified_by",
-        CAST("created_by" AS VARCHAR) AS "created_by",
-        CAST("modified_by" AS VARCHAR) AS "modified_by",
-        CAST("identity_created_on" AS VARCHAR) AS "identity_created_on",
-        CAST("identity_modified_on" AS VARCHAR) AS "identity_modified_on",
-        CAST("modified_on" AS VARCHAR) AS "modified_on",
-        CAST("source_system_name" AS VARCHAR) AS "source_system_name",
-        CAST("is_deleted" AS VARCHAR) AS "is_deleted",
-        CAST("report_date" AS VARCHAR) AS "report_date"
+        CAST(`program_name` AS STRING) AS `program_name`,
+        CAST(`program_type` AS STRING) AS `program_type`,
+        CAST(`reference` AS STRING) AS `reference`,
+        CAST(`application_id` AS STRING) AS `application_id`,
+        CAST(`application_status` AS STRING) AS `application_status`,
+        CAST(`amendmentno` AS STRING) AS `amendmentno`,
+        CAST(`utilizedamount` AS STRING) AS `utilizedamount`,
+        CAST(`unutilizedamount` AS STRING) AS `unutilizedamount`,
+        CAST(`totalapprovedamount` AS STRING) AS `totalapprovedamount`,
+        CAST(`totalavailableamt` AS STRING) AS `totalavailableamt`,
+        CAST(`utilizedamt` AS STRING) AS `utilizedamt`,
+        CAST(`unutilizedamt` AS STRING) AS `unutilizedamt`,
+        CAST(`customershareamt` AS STRING) AS `customershareamt`,
+        CAST(`haswagesupportmolemployees` AS STRING) AS `haswagesupportmolemployees`,
+        CAST(`cpr_number` AS STRING) AS `cpr_number`,
+        CAST(`customer_enterprise_name` AS STRING) AS `customer_enterprise_name`,
+        CAST(`approved_on_date` AS STRING) AS `approved_on_date`,
+        CAST(`contract_start_date` AS STRING) AS `contract_start_date`,
+        CAST(`monitoring_due_date` AS STRING) AS `monitoring_due_date`,
+        CAST(`contract_end_date` AS STRING) AS `contract_end_date`,
+        CAST(`total_approved_amount_tamkeen_share` AS STRING) AS `total_approved_amount_tamkeen_share`,
+        CAST(`created_on` AS STRING) AS `created_on`,
+        CAST(`submitted_on` AS STRING) AS `submitted_on`,
+        CAST(`spending_period_end_date` AS STRING) AS `spending_period_end_date`,
+        CAST(`approval_letter_confirmed` AS STRING) AS `approval_letter_confirmed`,
+        CAST(`dbt_updated_at` AS STRING) AS `dbt_updated_at`,
+        CAST(`mis_source_table` AS STRING) AS `mis_source_table`,
+        CAST(`amendment_id` AS STRING) AS `amendment_id`,
+        CAST(`amendment_name` AS STRING) AS `amendment_name`,
+        CAST(`application_name` AS STRING) AS `application_name`,
+        CAST(`main_company_name` AS STRING) AS `main_company_name`,
+        CAST(`details` AS STRING) AS `details`,
+        CAST(`total_amount` AS STRING) AS `total_amount`,
+        CAST(`total_bc_share` AS STRING) AS `total_bc_share`,
+        CAST(`total_tamkeen_share` AS STRING) AS `total_tamkeen_share`,
+        CAST(`tamkeen_share` AS STRING) AS `tamkeen_share`,
+        CAST(`tamkeen_share_state` AS STRING) AS `tamkeen_share_state`,
+        CAST(`tamkeen_share_last_updated_on` AS STRING) AS `tamkeen_share_last_updated_on`,
+        CAST(`amended_flag` AS STRING) AS `amended_flag`,
+        CAST(`products` AS STRING) AS `products`,
+        CAST(`amendment_reason` AS STRING) AS `amendment_reason`,
+        CAST(`old_workflow_status` AS STRING) AS `old_workflow_status`,
+        CAST(`reason` AS STRING) AS `reason`,
+        CAST(`amendment_type` AS STRING) AS `amendment_type`,
+        CAST(`workflow_status` AS STRING) AS `workflow_status`,
+        CAST(`status_reason` AS STRING) AS `status_reason`,
+        CAST(`state` AS STRING) AS `state`,
+        CAST(`owner_name` AS STRING) AS `owner_name`,
+        CAST(`identity_created_by` AS STRING) AS `identity_created_by`,
+        CAST(`identity_modified_by` AS STRING) AS `identity_modified_by`,
+        CAST(`created_by` AS STRING) AS `created_by`,
+        CAST(`modified_by` AS STRING) AS `modified_by`,
+        CAST(`identity_created_on` AS STRING) AS `identity_created_on`,
+        CAST(`identity_modified_on` AS STRING) AS `identity_modified_on`,
+        CAST(`modified_on` AS STRING) AS `modified_on`,
+        CAST(`source_system_name` AS STRING) AS `source_system_name`,
+        CAST(`is_deleted` AS STRING) AS `is_deleted`,
+        CAST(`report_date` AS STRING) AS `report_date`
     FROM silver_layer
 ),
 
