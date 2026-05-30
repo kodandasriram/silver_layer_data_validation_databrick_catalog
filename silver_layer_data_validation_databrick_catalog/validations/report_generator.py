@@ -10,7 +10,6 @@ from validations.delta_report_writer import write_validation_results
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DATABRICKS_OUTPUT_DIR = "dbfs:/FileStore/silver_layer_validation_output"
 DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR = Path(tempfile.gettempdir()) / "silver_layer_validation_output"
 
 
@@ -19,7 +18,7 @@ def get_output_dir():
     if configured_output_dir:
         return configured_output_dir
     if is_databricks_mode():
-        return DEFAULT_DATABRICKS_OUTPUT_DIR
+        return DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR
     return PROJECT_ROOT / "output"
 
 

@@ -373,7 +373,8 @@ def quote_identifier(identifier):
 
 
 def build_normalized_value_expr(column_name):
-    value_expr = f"LOWER(TRIM(CAST({quote_identifier(column_name)} AS VARCHAR)))"
+    string_type = "STRING" if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks" else "VARCHAR"
+    value_expr = f"LOWER(TRIM(CAST({quote_identifier(column_name)} AS {string_type})))"
     numeric_pattern = "'^-?[0-9]+([.][0-9]+)?$'"
     timestamp_pattern = "'^[0-9]{4}-[0-9]{2}-[0-9]{2}([ t][0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?)?$'"
     strip_fraction_zeros = (
