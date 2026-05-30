@@ -266,7 +266,17 @@ def _extract_cte_query(sql_text, cte_name, table_name, query_column):
     if close_index == -1:
         return None, f"{query_column} has an incomplete {cte_name} CTE for {table_name}"
 
-    cte_query = sql_text[open_index + 1:close_index].strip()
+    with_match = re.search(r"\bWITH\b", sql_text, flags=re.IGNORECASE)
+    if with_match and with_match.start() < cte_match.start():
+        cte_query = f"""
+            WITH
+            {sql_text[with_match.end():close_index + 1].strip()}
+            SELECT *
+            FROM {cte_name}
+        """.strip()
+    else:
+        cte_query = sql_text[open_index + 1:close_index].strip()
+
     if not cte_query:
         return None, f"{query_column} has an empty {cte_name} CTE for {table_name}"
 

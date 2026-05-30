@@ -1,4 +1,5 @@
 import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -9,15 +10,16 @@ from validations.delta_report_writer import write_validation_results
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DATABRICKS_OUTPUT_DIR = "/dbfs/FileStore/silver_layer_validation_output"
+DEFAULT_DATABRICKS_OUTPUT_DIR = "dbfs:/FileStore/silver_layer_validation_output"
+DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR = Path(tempfile.gettempdir()) / "silver_layer_validation_output"
 
 
 def get_output_dir():
     configured_output_dir = os.getenv("VALIDATION_OUTPUT_DIR")
     if configured_output_dir:
-        return Path(configured_output_dir)
+        return configured_output_dir
     if is_databricks_mode():
-        return Path(DEFAULT_DATABRICKS_OUTPUT_DIR)
+        return DEFAULT_DATABRICKS_OUTPUT_DIR
     return PROJECT_ROOT / "output"
 
 
@@ -30,7 +32,8 @@ def _safe_file_part(value):
 
 def generate_excel_report(df, table_name, status, detail_sheets=None, table_sequence=None, environment=None):
     output_dir = get_output_dir()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    local_output_dir, final_output_dir = resolve_output_dirs(output_dir)
+    local_output_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_environment = _safe_file_part(environment).lower() if environment else ""
@@ -40,7 +43,7 @@ def generate_excel_report(df, table_name, status, detail_sheets=None, table_sequ
     sequence_prefix = _sequence_prefix(table_sequence)
     environment_prefix = f"{safe_environment}_" if safe_environment else ""
     file_name = f"{sequence_prefix}{environment_prefix}{safe_table_name}_{timestamp}_{safe_status}.xlsx"
-    full_path = output_dir / file_name
+    full_path = local_output_dir / file_name
 
     detail_sheets = detail_sheets or {}
     with pd.ExcelWriter(full_path, engine="openpyxl") as writer:
@@ -55,23 +58,76 @@ def generate_excel_report(df, table_name, status, detail_sheets=None, table_sequ
             detail_df = _prepare_detail_sheet(sheet_name, detail_df)
             detail_df.to_excel(writer, sheet_name=safe_sheet_name, index=False)
 
-    print(f"Report generated: {full_path}")
-    print_download_hint(full_path)
+    final_path = publish_report(full_path, final_output_dir, file_name)
+    print(f"Report generated: {final_path}")
+    print_download_hint(final_path)
     write_validation_results(
         df,
         detail_sheets,
         table_name,
         status,
-        full_path,
+        final_path,
         table_sequence,
         environment,
     )
-    return full_path
+    return final_path
+
+
+def resolve_output_dirs(output_dir):
+    output_dir_text = str(output_dir)
+    if output_dir_text.startswith("dbfs:/") or output_dir_text.startswith("/dbfs/"):
+        return DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR, to_dbfs_uri(output_dir_text)
+    return Path(output_dir_text), None
+
+
+def to_dbfs_uri(path_text):
+    if path_text.startswith("dbfs:/"):
+        return path_text.rstrip("/")
+    if path_text.startswith("/dbfs/"):
+        return "dbfs:/" + path_text[len("/dbfs/"):].strip("/")
+    return path_text.rstrip("/")
+
+
+def publish_report(local_path, final_output_dir, file_name):
+    if not final_output_dir:
+        return local_path
+
+    final_uri = f"{final_output_dir}/{file_name}"
+    try:
+        dbutils = get_dbutils()
+        dbutils.fs.mkdirs(final_output_dir)
+        dbutils.fs.cp(f"file:{local_path}", final_uri, True)
+        return final_uri
+    except Exception as exc:
+        print(f"WARNING: Could not copy report to {final_uri}: {exc}")
+        print(f"Report remains on local driver path: {local_path}")
+        return local_path
+
+
+def get_dbutils():
+    try:
+        return dbutils
+    except NameError:
+        pass
+
+    try:
+        from IPython import get_ipython
+
+        shell = get_ipython()
+        if shell and "dbutils" in shell.user_ns:
+            return shell.user_ns["dbutils"]
+    except Exception:
+        pass
+
+    raise RuntimeError("dbutils is not available in this execution context")
 
 
 def print_download_hint(full_path):
     full_path = str(full_path)
-    if full_path.startswith("/dbfs/FileStore/"):
+    if full_path.startswith("dbfs:/FileStore/"):
+        file_store_path = full_path.replace("dbfs:/FileStore/", "", 1).replace("\\", "/")
+        print(f"Download from Databricks Files: /files/{file_store_path}")
+    elif full_path.startswith("/dbfs/FileStore/"):
         file_store_path = full_path.replace("/dbfs/FileStore/", "", 1).replace("\\", "/")
         print(f"Download from Databricks Files: /files/{file_store_path}")
 
