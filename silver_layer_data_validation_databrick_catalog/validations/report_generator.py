@@ -9,6 +9,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def get_output_dir():
+    configured_output_dir = os.getenv("VALIDATION_OUTPUT_DIR")
+    if configured_output_dir:
+        return Path(configured_output_dir)
+    if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks":
+        return Path("/tmp/silver_layer_data_validation/output")
     return Path(os.getenv("VALIDATION_OUTPUT_DIR", PROJECT_ROOT / "output"))
 
 

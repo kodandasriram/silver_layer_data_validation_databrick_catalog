@@ -2,7 +2,11 @@ import logging
 import time
 
 import pandas as pd
-from trino import exceptions as trino_exceptions
+
+try:
+    from trino import exceptions as trino_exceptions
+except ImportError:
+    trino_exceptions = None
 
 
 logger = logging.getLogger(__name__)
@@ -17,10 +21,12 @@ def execute_query(conn, query):
         rows = cursor.fetchall()
         columns = [column[0] for column in cursor.description] if cursor.description else []
         return pd.DataFrame(rows, columns=columns)
-    except trino_exceptions.HttpError as exc:
-        raise RuntimeError(f"Trino HTTP error: {exc}") from exc
-    except trino_exceptions.TrinoUserError as exc:
-        raise RuntimeError(f"Trino query error: {exc}") from exc
+    except Exception as exc:
+        if trino_exceptions and isinstance(exc, trino_exceptions.HttpError):
+            raise RuntimeError(f"Trino HTTP error: {exc}") from exc
+        if trino_exceptions and isinstance(exc, trino_exceptions.TrinoUserError):
+            raise RuntimeError(f"Trino query error: {exc}") from exc
+        raise
     finally:
         cursor.close()
         elapsed = time.perf_counter() - start

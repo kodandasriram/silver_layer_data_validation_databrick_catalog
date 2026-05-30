@@ -3,12 +3,17 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-import trino
-from trino.auth import BasicAuthentication
 from urllib3.exceptions import InsecureRequestWarning
 import urllib3
-from config.databricks_connection import create_databricks_connection
+from config.spark_connection import create_spark_connection
 from utils.excel_reader import read_environment_config
+
+try:
+    import trino
+    from trino.auth import BasicAuthentication
+except ImportError:
+    trino = None
+    BasicAuthentication = None
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -146,6 +151,12 @@ def _test_connection(conn):
 
 
 def create_connection(row):
+    if trino is None:
+        raise RuntimeError(
+            "The trino package is required for local/Jenkins execution. "
+            "Use VALIDATION_SOURCE=databricks inside Databricks to run with Spark SQL."
+        )
+
     requested_auth_type = str(row.get("auth_type", "")).strip().upper() or "AUTO"
     auth_types = ["BASIC", "NONE"] if requested_auth_type == "AUTO" else [requested_auth_type]
     errors = []
@@ -188,7 +199,7 @@ def create_connection(row):
 
 def get_connections():
     if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks":
-        conn = create_databricks_connection()
+        conn = create_spark_connection()
         return conn, conn
 
     bronze_row, silver_row = select_environment_db_rows(get_db_config())
