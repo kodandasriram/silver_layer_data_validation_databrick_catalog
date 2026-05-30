@@ -19,7 +19,7 @@ pipeline {
                 bat '''
                 "C:\\Users\\MODICHERLA\\AppData\\Local\\Python\\bin\\python.exe" -m venv venv
                 call venv\\Scripts\\activate
-                pip install -r silver_layer_data_validation\\requirements.txt
+                pip install -r silver_layer_data_validation_databrick_catalog\\requirements.txt
                 '''
             }
         }
@@ -28,14 +28,22 @@ pipeline {
             steps {
                 bat '''
                 call venv\\Scripts\\activate
-                python silver_layer_data_validation\\main_runner.py
+                set VALIDATION_EMAIL_ENABLED=true
+                set VALIDATION_EMAIL_SMTP_HOST=smtp.office365.com
+                set VALIDATION_EMAIL_SMTP_PORT=587
+                set VALIDATION_EMAIL_USE_TLS=true
+                set VALIDATION_EMAIL_FROM=your_email@company.com
+                set VALIDATION_EMAIL_TO=msriram@hexalytics.com
+                set VALIDATION_EMAIL_SMTP_USER=your_email@company.com
+                set VALIDATION_EMAIL_SMTP_PASSWORD=your_password_or_app_password
+                python silver_layer_data_validation_databrick_catalog\\main_runner.py
                 '''
             }
         }
 
         stage('Archive Output') {
             steps {
-                archiveArtifacts artifacts: 'silver_layer_data_validation/output/**/*', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'silver_layer_data_validation_databrick_catalog/output/**/*', allowEmptyArchive: true
             }
         }
     }

@@ -11,6 +11,7 @@ from config.db_connection import get_connections
 from config.runtime import activate_databricks_mode, use_databricks_rules_config
 from utils.excel_reader import read_table_queries, read_validations
 from utils.databricks_catalog_reader import read_databricks_validation_inputs
+from utils.email_notifier import send_validation_summary_email
 from validations.comparator import execute_query, execute_query_scalar, get_query_columns
 from validations.report_generator import generate_excel_report, get_output_dir
 
@@ -1160,11 +1161,17 @@ def main():
 
     print_run_status_summary(run_status_rows)
     if run_status_rows:
-        generate_excel_report(
+        summary_report_path = generate_excel_report(
             pd.DataFrame(run_status_rows),
             "validation_run_status_summary",
             get_run_overall_status(run_status_rows),
         )
+        try:
+            if send_validation_summary_email(run_status_rows, summary_report_path):
+                print("Validation summary email sent.")
+        except Exception as exc:
+            logger.exception("Validation summary email failed")
+            print(f"WARNING: Validation summary email failed: {exc}")
 
 
 def print_run_status_summary(run_status_rows):
