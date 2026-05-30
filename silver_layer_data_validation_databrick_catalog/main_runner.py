@@ -11,7 +11,7 @@ from config.runtime import activate_databricks_mode, use_databricks_rules_config
 from utils.excel_reader import read_table_queries, read_validations
 from utils.databricks_catalog_reader import read_databricks_validation_inputs
 from validations.comparator import execute_query, execute_query_scalar, get_query_columns
-from validations.report_generator import generate_excel_report
+from validations.report_generator import generate_excel_report, get_output_dir
 
 
 logging.basicConfig(
@@ -1033,12 +1033,17 @@ def run_validations(bronze_conn, silver_conn, table_name, bronze_q, silver_q, va
 
 def main():
     activate_databricks_mode()
+    print(f"Validation output directory: {get_output_dir()}")
     bronze_conn, silver_conn = get_connections()
     if use_databricks_rules_config():
+        print("Validation config source: Databricks validation rules table")
         table_df, validation_df = read_databricks_validation_inputs(silver_conn)
     else:
+        print("Validation config source: validation_queries.xlsx")
         table_df = read_table_queries()
         validation_df = read_validations()
+
+    run_status_rows = []
 
     for _, row in table_df.iterrows():
         table_name = clean_value(row.get("table_name"))
@@ -1073,6 +1078,15 @@ def main():
                 table_sequence=row.get("S.No"),
                 environment=selected_environment,
             )
+            run_status_rows.append(
+                {
+                    "S.No": row.get("S.No"),
+                    "table_name": table_name,
+                    "overall_status": "ERROR",
+                    "message": query_config_error or "bronze_query or silver_query is missing",
+                    "run_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
             continue
 
         console_table_header(row.get("S.No"), table_name)
@@ -1102,6 +1116,48 @@ def main():
             row.get("S.No"),
             environment=selected_environment,
         )
+        run_status_rows.append(
+            {
+                "S.No": row.get("S.No"),
+                "table_name": table_name,
+                "overall_status": overall_status,
+                "message": "",
+                "run_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+
+    print_run_status_summary(run_status_rows)
+    if run_status_rows:
+        generate_excel_report(
+            pd.DataFrame(run_status_rows),
+            "validation_run_status_summary",
+            get_run_overall_status(run_status_rows),
+        )
+
+
+def print_run_status_summary(run_status_rows):
+    if not run_status_rows:
+        print("No enabled tables were executed.")
+        return
+
+    print("\nValidation table status summary")
+    for index, row in enumerate(run_status_rows, start=1):
+        table_name = row.get("table_name") or ""
+        status = row.get("overall_status") or ""
+        print(f"{index}. {table_name} {status}")
+
+
+def get_run_overall_status(run_status_rows):
+    statuses = [str(row.get("overall_status") or "").upper() for row in run_status_rows]
+    if not statuses:
+        return "NO_VALIDATIONS"
+    if all(status == "PASS" for status in statuses):
+        return "PASS"
+    if any(status == "ERROR" for status in statuses):
+        return "ERROR"
+    if any(status == "FAIL" for status in statuses):
+        return "FAIL"
+    return "NO_VALIDATIONS"
 
 
 if __name__ == "__main__":

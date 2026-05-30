@@ -4,17 +4,21 @@ from pathlib import Path
 
 import pandas as pd
 
+from config.runtime import is_databricks_mode
+from validations.delta_report_writer import write_validation_results
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DATABRICKS_OUTPUT_DIR = "/dbfs/FileStore/silver_layer_validation_output"
 
 
 def get_output_dir():
     configured_output_dir = os.getenv("VALIDATION_OUTPUT_DIR")
     if configured_output_dir:
         return Path(configured_output_dir)
-    if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks":
-        return Path("/tmp/silver_layer_data_validation/output")
-    return Path(os.getenv("VALIDATION_OUTPUT_DIR", PROJECT_ROOT / "output"))
+    if is_databricks_mode():
+        return Path(DEFAULT_DATABRICKS_OUTPUT_DIR)
+    return PROJECT_ROOT / "output"
 
 
 def _safe_file_part(value):
@@ -52,7 +56,24 @@ def generate_excel_report(df, table_name, status, detail_sheets=None, table_sequ
             detail_df.to_excel(writer, sheet_name=safe_sheet_name, index=False)
 
     print(f"Report generated: {full_path}")
+    print_download_hint(full_path)
+    write_validation_results(
+        df,
+        detail_sheets,
+        table_name,
+        status,
+        full_path,
+        table_sequence,
+        environment,
+    )
     return full_path
+
+
+def print_download_hint(full_path):
+    full_path = str(full_path)
+    if full_path.startswith("/dbfs/FileStore/"):
+        file_store_path = full_path.replace("/dbfs/FileStore/", "", 1).replace("\\", "/")
+        print(f"Download from Databricks Files: /files/{file_store_path}")
 
 
 def _safe_sheet_name(value):
