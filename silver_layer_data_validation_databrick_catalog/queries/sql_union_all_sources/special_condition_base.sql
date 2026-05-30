@@ -1,13 +1,3 @@
--- Compare bronze-layer query output with silver-layer table output for special_condition_base.
--- Validations included:
---   1. Record counts for bronze_layer and silver_layer.
---   2. Column counts for bronze_layer and silver_layer.
---   3. Column name/order match flag.
---   4. Mismatching row counts in each direction after casting all compared columns to STRING.
---
--- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\special_condition_base_direct.sql
--- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\special_condition_base_silver_layer.sql
-
 WITH
 bronze_layer AS (
 -- Standalone Trino SQL generated from special_condition_base.sql.

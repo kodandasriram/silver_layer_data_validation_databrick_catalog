@@ -1,13 +1,3 @@
--- Compare bronze-layer query output with silver-layer table output for payment_base.
--- Validations included:
---   1. Record counts for bronze_layer and silver_layer.
---   2. Column counts for bronze_layer and silver_layer.
---   3. Column name/order match flag.
---   4. Mismatching row counts in each direction after casting all compared columns to STRING.
---
--- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\union of os2_os1_mis\payment_base_os2_os1_mis_union_bronze_layer.sql
--- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\payment_base_silver_layer.sql
-
 WITH
 bronze_layer AS (
 -- Bronze-layer UNION ALL for payment_base across OS2, OS1, and MIS.
