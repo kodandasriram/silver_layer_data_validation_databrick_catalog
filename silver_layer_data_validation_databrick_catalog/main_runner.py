@@ -373,8 +373,7 @@ def quote_identifier(identifier):
 
 
 def build_normalized_value_expr(column_name):
-    string_type = "STRING" if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks" else "VARCHAR"
-    value_expr = f"LOWER(TRIM(CAST({quote_identifier(column_name)} AS {string_type})))"
+    value_expr = f"LOWER(TRIM(CAST({quote_identifier(column_name)} AS {sql_string_type()})))"
     numeric_pattern = "'^-?[0-9]+([.][0-9]+)?$'"
     timestamp_pattern = "'^[0-9]{4}-[0-9]{2}-[0-9]{2}([ t][0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?)?$'"
     strip_fraction_zeros = (
@@ -397,6 +396,10 @@ def build_normalized_value_expr(column_name):
         f"OR REGEXP_LIKE({value_expr}, {timestamp_pattern}) "
         f"THEN {normalized_temporal_value} ELSE {value_expr} END"
     )
+
+
+def sql_string_type():
+    return "STRING" if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks" else "VARCHAR"
 
 
 def build_normalized_select(source_query, source_columns, output_columns=None):
@@ -705,10 +708,10 @@ def fetch_column_diff_detail(
     for index, (left_pk, right_pk) in enumerate(zip(left_pk_columns, right_pk_columns), start=1):
         alias_name = f"pk_{index}"
         left_select_parts.append(
-            f"CAST({quote_identifier(left_pk)} AS VARCHAR) AS {quote_identifier(alias_name)}"
+            f"CAST({quote_identifier(left_pk)} AS {sql_string_type()}) AS {quote_identifier(alias_name)}"
         )
         right_select_parts.append(
-            f"CAST({quote_identifier(right_pk)} AS VARCHAR) AS {quote_identifier(alias_name)}"
+            f"CAST({quote_identifier(right_pk)} AS {sql_string_type()}) AS {quote_identifier(alias_name)}"
         )
         join_conditions.append(
             f"l.{quote_identifier(alias_name)} IS NOT DISTINCT FROM r.{quote_identifier(alias_name)}"
