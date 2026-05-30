@@ -1,4 +1,5 @@
 import os
+import re
 
 import pandas as pd
 
@@ -46,12 +47,23 @@ def normalize_validation_rules(validation_df):
         "primary_keys": "pk",
         "key_columns": "pk",
         "columns_to_compare": "compare_columns",
+        "source_table": "bronze_table",
+        "bronze_table": "bronze_table",
+        "target_table": "silver_table",
+        "silver_table": "silver_table",
+        "source_query": "bronze_query",
+        "bronze_query": "bronze_query",
+        "target_query": "silver_query",
+        "silver_query": "silver_query",
     }.items():
         if source_name in lower_columns and target_name not in validation_df.columns:
             rename_map[lower_columns[source_name]] = target_name
 
     if rename_map:
         validation_df = validation_df.rename(columns=rename_map)
+
+    if "table_name" not in validation_df.columns:
+        validation_df["table_name"] = validation_df.apply(derive_table_name, axis=1)
 
     if "flag" not in validation_df.columns:
         validation_df["flag"] = 1
@@ -68,6 +80,70 @@ def normalize_validation_rules(validation_df):
         )
 
     return validation_df
+
+
+def derive_table_name(row):
+    configured_column = os.getenv("DATABRICKS_TABLE_NAME_COLUMN")
+    candidates = []
+    if configured_column:
+        candidates.append(configured_column)
+    candidates.extend(
+        [
+            "table_name",
+            "silver_table",
+            "bronze_table",
+            "target_system",
+            "source_system",
+            "source",
+            "validation_logic",
+        ]
+    )
+
+    for column_name in candidates:
+        if column_name not in row.index:
+            continue
+        table_name = extract_table_name(row.get(column_name))
+        if table_name:
+            return table_name
+
+    configured_tables = split_config_list(os.getenv("DATABRICKS_VALIDATION_TABLES"))
+    if len(configured_tables) == 1:
+        return configured_tables[0]
+    return None
+
+
+def extract_table_name(value):
+    if pd.isna(value):
+        return None
+
+    text_value = str(value).strip()
+    if not text_value:
+        return None
+
+    table_refs = re.findall(
+        r"(?:FROM|JOIN)\s+((?:`[^`]+`|\"[^\"]+\"|[A-Za-z0-9_-]+)(?:\s*\.\s*(?:`[^`]+`|\"[^\"]+\"|[A-Za-z0-9_-]+))*)",
+        text_value,
+        flags=re.IGNORECASE,
+    )
+    if table_refs:
+        return table_ref_to_name(table_refs[0])
+
+    if "." in text_value:
+        return table_ref_to_name(text_value)
+
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", text_value) and "_" in text_value:
+        return text_value
+
+    return None
+
+
+def table_ref_to_name(table_ref):
+    table_ref = str(table_ref).strip().rstrip(";")
+    parts = [part.strip().strip("`").strip('"') for part in re.split(r"\s*\.\s*", table_ref)]
+    parts = [part for part in parts if part]
+    if not parts:
+        return None
+    return parts[-1]
 
 
 def infer_validation_type(rule_id):
@@ -101,6 +177,7 @@ def build_table_queries_from_rules(validation_df):
     bronze_namespace = os.getenv("DATABRICKS_BRONZE_NAMESPACE", DEFAULT_BRONZE_NAMESPACE)
     silver_namespace = os.getenv("DATABRICKS_SILVER_NAMESPACE", DEFAULT_SILVER_NAMESPACE)
 
+    configured_tables = split_config_list(os.getenv("DATABRICKS_VALIDATION_TABLES"))
     table_names = (
         validation_df["table_name"]
         .dropna()
@@ -108,20 +185,65 @@ def build_table_queries_from_rules(validation_df):
         .str.strip()
     )
     table_names = [table_name for table_name in table_names.drop_duplicates() if table_name]
+    if not table_names and configured_tables:
+        table_names = configured_tables
+    if not table_names:
+        raise ValueError(
+            "No table names could be derived from Databricks validation rules. "
+            "Set DATABRICKS_VALIDATION_TABLES or DATABRICKS_TABLE_NAME_COLUMN in the Workflow environment."
+        )
 
     rows = []
     for index, table_name in enumerate(table_names, start=1):
+        table_rules = validation_df[
+            validation_df["table_name"].fillna("").astype(str).str.strip().str.upper() == table_name.upper()
+        ]
+        first_rule = table_rules.iloc[0] if not table_rules.empty else pd.Series(dtype="object")
+        bronze_query = first_configured_query(first_rule, "bronze_query")
+        silver_query = first_configured_query(first_rule, "silver_query")
+        bronze_table = first_configured_query(first_rule, "bronze_table")
+        silver_table = first_configured_query(first_rule, "silver_table")
         rows.append(
             {
                 "S.No": index,
                 "flag": 1,
                 "table_name": table_name,
-                "bronze_query": f"SELECT * FROM {bronze_namespace}.{quote_table_name(table_name)}",
-                "silver_query": f"SELECT * FROM {silver_namespace}.{quote_table_name(table_name)}",
+                "bronze_query": bronze_query or build_source_query(bronze_table, bronze_namespace, table_name),
+                "silver_query": silver_query or build_source_query(silver_table, silver_namespace, table_name),
             }
         )
 
     return pd.DataFrame(rows)
+
+
+def build_source_query(configured_table, default_namespace, table_name):
+    if configured_table:
+        configured_table = str(configured_table).strip()
+        if is_full_table_reference(configured_table):
+            return f"SELECT * FROM {configured_table}"
+        return f"SELECT * FROM {configured_table}.{quote_table_name(table_name)}"
+    return f"SELECT * FROM {default_namespace}.{quote_table_name(table_name)}"
+
+
+def is_full_table_reference(value):
+    parts = [part.strip() for part in str(value).split(".") if part.strip()]
+    return len(parts) >= 3
+
+
+def first_configured_query(row, column_name):
+    if row.empty or column_name not in row.index:
+        return None
+    value = row.get(column_name)
+    if pd.isna(value):
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def split_config_list(value):
+    if value is None:
+        return []
+    return [item.strip() for item in re.split(r"[,;\n\r]+", str(value)) if item.strip()]
 
 
 def quote_table_name(table_name):
