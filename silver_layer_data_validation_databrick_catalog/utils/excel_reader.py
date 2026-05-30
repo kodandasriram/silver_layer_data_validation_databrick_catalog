@@ -157,6 +157,18 @@ def apply_environment_to_sql(sql_text, environment_config=None):
 
 def _resolve_query_file_path(value):
     query_path = Path(value)
+    if query_path.exists():
+        return query_path
+
+    path_text = str(value).replace("\\", "/")
+    project_folder = PROJECT_ROOT.name
+    project_marker = f"/{project_folder}/"
+    if project_marker in path_text:
+        relative_part = path_text.split(project_marker, 1)[1]
+        remapped_path = PROJECT_ROOT / relative_part
+        if remapped_path.exists():
+            return remapped_path
+
     if not query_path.is_absolute():
         query_path = PROJECT_ROOT / query_path
     return query_path

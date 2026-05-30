@@ -15,3 +15,10 @@ def is_databricks_mode():
 def activate_databricks_mode():
     if is_databricks_mode():
         os.environ.setdefault("VALIDATION_SOURCE", "databricks")
+
+
+def use_databricks_rules_config():
+    config_source = os.getenv("VALIDATION_CONFIG_SOURCE", "").strip().lower()
+    if config_source:
+        return config_source in {"databricks", "catalog", "rules", "validation_rules"}
+    return os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks"
