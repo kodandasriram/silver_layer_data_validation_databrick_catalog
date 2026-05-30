@@ -7,6 +7,7 @@ from datetime import datetime
 import pandas as pd
 
 from config.db_connection import get_connections
+from config.runtime import activate_databricks_mode, is_databricks_mode
 from utils.excel_reader import read_table_queries, read_validations
 from utils.databricks_catalog_reader import read_databricks_validation_inputs
 from validations.comparator import execute_query, execute_query_scalar, get_query_columns
@@ -1031,8 +1032,9 @@ def run_validations(bronze_conn, silver_conn, table_name, bronze_q, silver_q, va
 
 
 def main():
+    activate_databricks_mode()
     bronze_conn, silver_conn = get_connections()
-    if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks":
+    if is_databricks_mode():
         table_df, validation_df = read_databricks_validation_inputs(silver_conn)
     else:
         table_df = read_table_queries()

@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 from urllib3.exceptions import InsecureRequestWarning
 import urllib3
+from config.runtime import activate_databricks_mode, is_databricks_mode
 from config.spark_connection import create_spark_connection
 from utils.excel_reader import read_environment_config
 
@@ -198,7 +199,8 @@ def create_connection(row):
 
 
 def get_connections():
-    if os.getenv("VALIDATION_SOURCE", "").strip().lower() == "databricks":
+    activate_databricks_mode()
+    if is_databricks_mode():
         conn = create_spark_connection()
         return conn, conn
 
