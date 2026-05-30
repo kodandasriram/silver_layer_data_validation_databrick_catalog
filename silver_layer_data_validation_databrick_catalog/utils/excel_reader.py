@@ -159,6 +159,10 @@ def _resolve_query_file_path(value):
     query_path = Path(value)
     if query_path.exists():
         return query_path
+    if not query_path.suffix:
+        sql_suffixed_path = Path(str(query_path) + ".sql")
+        if sql_suffixed_path.exists():
+            return sql_suffixed_path
 
     path_text = str(value).replace("\\", "/")
     project_folder = PROJECT_ROOT.name
@@ -180,7 +184,7 @@ def _looks_like_query_file(value):
         return False
 
     path = Path(query_file)
-    return path.suffix.lower() == ".sql"
+    return path.suffix.lower() == ".sql" or not path.suffix
 
 
 def _read_query_file(value, table_name, query_column):

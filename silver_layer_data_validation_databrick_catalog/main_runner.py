@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import traceback
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 
@@ -19,6 +20,28 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def format_sql_preview(sql_text, max_chars=2000):
+    compact_sql = re.sub(r"\s+", " ", str(sql_text or "")).strip()
+    if len(compact_sql) <= max_chars:
+        return compact_sql
+    return compact_sql[:max_chars] + " ... [truncated]"
+
+
+def print_validation_exception(table_name, validation_name, exc, bronze_q=None, silver_q=None):
+    print("\n--- Validation exception details ---")
+    print(f"Table: {table_name}")
+    print(f"Validation: {validation_name}")
+    print(f"Exception type: {type(exc).__name__}")
+    print(f"Exception message: {exc}")
+    if bronze_q:
+        print(f"Bronze SQL preview: {format_sql_preview(bronze_q)}")
+    if silver_q:
+        print(f"Silver SQL preview: {format_sql_preview(silver_q)}")
+    print("Traceback:")
+    print(traceback.format_exc())
+    print("--- End validation exception details ---\n")
 
 
 def console_table_header(sequence_number, table_name):
@@ -1023,6 +1046,7 @@ def run_validations(bronze_conn, silver_conn, table_name, bronze_q, silver_q, va
             console_validation_line(validation_name, latest_status)
         except Exception as exc:
             logger.exception("Validation %s failed for %s", validation_name, table_name)
+            print_validation_exception(table_name, validation_name, exc, bronze_q, silver_q)
             append_result(
                 results,
                 table_name,
@@ -1063,6 +1087,10 @@ def main():
         selected_environment = clean_value(row.get("selected_environment"))
 
         if query_config_error or not bronze_q or not silver_q:
+            print("\n--- Validation configuration error ---")
+            print(f"Table: {table_name}")
+            print(f"Message: {query_config_error or 'bronze_query or silver_query is missing'}")
+            print("--- End validation configuration error ---\n")
             result_df = pd.DataFrame(
                 [
                     {

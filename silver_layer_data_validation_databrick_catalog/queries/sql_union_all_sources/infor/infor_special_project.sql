@@ -1,0 +1,48 @@
+SELECT
+    contract,
+	description,
+	contracttype,
+	name,
+	vendor,
+	vendorname,
+	reference1,
+	derivedaccountingunit,
+	description_full,
+	onhold,
+	status,
+	effectivedate,
+	expirationdate,
+	maximumamount,
+	amountordered,
+	derivedcommitmentamountremaining,
+	performancebondpercentage,
+	primarycontact,
+	timestamp,
+	CAST('ODOO' AS STRING) AS source_system_name,
+    current_timestamp() AS dbt_updated_at
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.infor_specialprojectcontracts ;
+
+select 
+contract_id,
+contract_description,
+contract_type,
+contract_name,
+vendor_id,
+vendor_name,
+vendor_reference,
+accounting_unit_code,
+accounting_unit_description,
+is_on_hold,
+contract_status,
+effective_date,
+expiration_date,
+maximum_amount,
+amount_ordered,
+commitment_amount_remaining,
+performance_bond_pct,
+primary_contact,
+updated_on,
+dbt_updated_at,
+source_system_name
+from 
+`tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.special_projects_agreement_base

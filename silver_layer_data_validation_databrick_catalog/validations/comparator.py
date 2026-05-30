@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 
 import pandas as pd
@@ -12,6 +13,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def format_query_preview(query, max_chars=3000):
+    compact_query = re.sub(r"\s+", " ", str(query or "")).strip()
+    if len(compact_query) <= max_chars:
+        return compact_query
+    return compact_query[:max_chars] + " ... [truncated]"
+
+
 def execute_query(conn, query):
     start = time.perf_counter()
     cursor = conn.cursor()
@@ -22,6 +30,13 @@ def execute_query(conn, query):
         columns = [column[0] for column in cursor.description] if cursor.description else []
         return pd.DataFrame(rows, columns=columns)
     except Exception as exc:
+        query_preview = format_query_preview(query)
+        logger.error("Query failed after %.2f seconds. SQL preview: %s", time.perf_counter() - start, query_preview)
+        print("\n--- Query execution failed ---")
+        print(f"Exception type: {type(exc).__name__}")
+        print(f"Exception message: {exc}")
+        print(f"SQL preview: {query_preview}")
+        print("--- End query execution failure ---\n")
         if trino_exceptions and isinstance(exc, trino_exceptions.HttpError):
             raise RuntimeError(f"Trino HTTP error: {exc}") from exc
         if trino_exceptions and isinstance(exc, trino_exceptions.TrinoUserError):
