@@ -1,5 +1,4 @@
 import os
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -10,7 +9,9 @@ from validations.delta_report_writer import write_validation_results
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR = Path(tempfile.gettempdir()) / "silver_layer_validation_output"
+DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR = Path(
+    "/Volumes/dev_iceberg/tmkn-aws-dwh-dev-iceberg/dev_volume"
+)
 
 
 def get_output_dir():

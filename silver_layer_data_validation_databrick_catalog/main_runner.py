@@ -1169,6 +1169,8 @@ def main():
         try:
             if send_validation_summary_email(run_status_rows, summary_report_path):
                 print("Validation summary email sent.")
+            else:
+                print("Validation summary email skipped. Set VALIDATION_EMAIL_ENABLED=true to enable it.")
         except Exception as exc:
             logger.exception("Validation summary email failed")
             print(f"WARNING: Validation summary email failed: {exc}")
