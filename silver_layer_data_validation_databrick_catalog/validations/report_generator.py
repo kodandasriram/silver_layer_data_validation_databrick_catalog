@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR = Path(
     "/Volumes/dev_iceberg/tmkn-aws-dwh-dev-iceberg/dev_volume"
 )
+LOCAL_EXCEL_WRITE_DIR = Path(tempfile.gettempdir()) / "silver_layer_validation_output"
 
 
 def get_output_dir():
@@ -76,7 +79,9 @@ def generate_excel_report(df, table_name, status, detail_sheets=None, table_sequ
 def resolve_output_dirs(output_dir):
     output_dir_text = str(output_dir)
     if output_dir_text.startswith("dbfs:/") or output_dir_text.startswith("/dbfs/"):
-        return DEFAULT_DATABRICKS_LOCAL_OUTPUT_DIR, to_dbfs_uri(output_dir_text)
+        return LOCAL_EXCEL_WRITE_DIR, to_dbfs_uri(output_dir_text)
+    if output_dir_text.startswith("/Volumes/"):
+        return LOCAL_EXCEL_WRITE_DIR, Path(output_dir_text)
     return Path(output_dir_text), None
 
 
@@ -91,6 +96,17 @@ def to_dbfs_uri(path_text):
 def publish_report(local_path, final_output_dir, file_name):
     if not final_output_dir:
         return local_path
+
+    if isinstance(final_output_dir, Path):
+        final_path = final_output_dir / file_name
+        try:
+            final_output_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(local_path, final_path)
+            return final_path
+        except Exception as exc:
+            print(f"WARNING: Could not copy report to {final_path}: {exc}")
+            print(f"Report remains on local driver path: {local_path}")
+            return local_path
 
     final_uri = f"{final_output_dir}/{file_name}"
     try:
