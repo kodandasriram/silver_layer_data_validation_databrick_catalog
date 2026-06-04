@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for sector_isic_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\sector_isic_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\sector_isic_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from sector_isic_base.sql.
+-- Standalone Databricks SQL generated from sector_isic_base.sql.
 -- Final column order aligned to silver_layer_query/sector_isic_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =================================================================================================
 
@@ -39,8 +49,8 @@ SELECT
     b.LABEL AS sectorisicactivity,
     'NEO2' AS source_system_name,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_SECTORISIC3 a
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_SECTORISICACTIVITY3 b
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_SECTORISIC3` a
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_SECTORISICACTIVITY3` b
         ON a.SECTORISICACTIVITYID = b.CODE
 )
 SELECT
@@ -62,7 +72,7 @@ SELECT
     is_deleted,
     source_system_name,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.sector_isic_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`sector_isic_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

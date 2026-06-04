@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for payment_support_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\payment_support_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\payment_support_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from payment_support_base.sql.
+-- Standalone Databricks SQL generated from payment_support_base.sql.
 -- Final column order aligned to silver_layer_query/payment_support_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =============================================================================
    Name          : PAYMENT_SUPPORT_BASE_OS2
@@ -94,21 +104,18 @@ WITH CTE_PAYMENTSUPPORT AS (
         a.CREATEDON createdon,
 		A.createdby,-- newly added
 		A.updatedby,-- newly added
-        AST.amendmentrequestid,
         cast(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at,
         ROW_NUMBER() OVER (PARTITION BY A.id ORDER BY A.updatedon DESC NULLS LAST, A.createdon DESC NULLS LAST) AS rnk
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTSUPPORT A
-     left join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTREQUEST PR
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTSUPPORT` A
+     left join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTREQUEST` PR
      on PR.ID = A.PAYMENTRESQUESTID
-     left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT  AST
-     on AST.ID = A.APPLICATIONSUPPORTID
-    left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_SUPPORTTYPE ST
+    left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_SUPPORTTYPE` ST
     on ST.CODE = A.SUPPORTTYPEID
-    left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTSUPPORTSTATUS PSS
+    left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTSUPPORTSTATUS` PSS
     on PSS.CODE = A.PAYMENTSUPPORTSTATUSID
-    left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MM5_CURRENCY4 C
+    left join  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MM5_CURRENCY4` C
     on C.ISOCODE  = A.ITEMCOSTCURRENCYID
-    left join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTDELIVERYSTATUS PDS 
+    left join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTDELIVERYSTATUS` PDS 
     ON PDS.CODE = A.PAYMENTDELIVERYSTATUSID 
 )
 
@@ -203,7 +210,7 @@ SELECT
     createdby,
     updatedby,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.payment_support_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`payment_support_base`
 ),
 
 bronze_columns(column_position, column_name) AS (
@@ -428,20 +435,40 @@ validation_results AS (
         'column_names_match' AS validation_point,
         CAST((
             SELECT COUNT(*)
-            FROM bronze_columns b
-            FULL OUTER JOIN silver_columns s
-              ON b.column_position = s.column_position
-             AND b.column_name = s.column_name
-            WHERE b.column_name IS NULL OR s.column_name IS NULL
+            FROM (
+                SELECT column_position, column_name
+                FROM (
+                    SELECT column_position, column_name FROM bronze_columns
+                    EXCEPT
+                    SELECT column_position, column_name FROM silver_columns
+                ) bronze_only
+                UNION ALL
+                SELECT column_position, column_name
+                FROM (
+                    SELECT column_position, column_name FROM silver_columns
+                    EXCEPT
+                    SELECT column_position, column_name FROM bronze_columns
+                ) silver_only
+            ) column_differences
         ) AS BIGINT) AS bronze_layer_count,
         CAST(0 AS BIGINT) AS silver_layer_count,
         CASE WHEN NOT EXISTS (
             SELECT 1
-            FROM bronze_columns b
-            FULL OUTER JOIN silver_columns s
-              ON b.column_position = s.column_position
-             AND b.column_name = s.column_name
-            WHERE b.column_name IS NULL OR s.column_name IS NULL
+            FROM (
+                SELECT column_position, column_name
+                FROM (
+                    SELECT column_position, column_name FROM bronze_columns
+                    EXCEPT
+                    SELECT column_position, column_name FROM silver_columns
+                ) bronze_only
+                UNION ALL
+                SELECT column_position, column_name
+                FROM (
+                    SELECT column_position, column_name FROM silver_columns
+                    EXCEPT
+                    SELECT column_position, column_name FROM bronze_columns
+                ) silver_only
+            ) column_differences
         ) THEN 'PASS' ELSE 'FAIL' END AS validation_status
 
     UNION ALL

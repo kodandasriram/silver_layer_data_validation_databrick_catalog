@@ -1,13 +1,60 @@
+-- Compare bronze-layer query output with silver-layer table output for user_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\user_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\user_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for user_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: user_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
-
-WITH user_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
 /*
- =============================================================================
+Generated Databricks union layer for user_base.
+Column order and typed NULL placeholders follow dbt model: user_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
+
+/*
+ =================================================================================================
+
+Name        : USER_BASE
+Description : This model consolidates and standardizes amendment-related attributes
+              from OS1 and OS2 base models into a unified schema. It aligns column
+              structures across both sources using NULL placeholders where attributes
+              are not available and combines the datasets using UNION ALL.
+
+              The model ensures consistent column naming and structure for downstream
+              consumption in the Silver Layer.
+
+Source Tables : user_base_os2
+                user_base_os1
+
+				
+
+Target Table : USER_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Kaviya  | Initial version
+
+================================================================================================= 
+*/
+
+
+
+WITH
+    user_base_os2 AS (
+/* =============================================================================
    Name          : USER_BASE_OS2
    Description   : This model extracts and transforms user-level data from the
                    NEO2 (OS2) Bronze Layer and loads it into the USER_BASE_OS2
@@ -37,8 +84,8 @@ WITH user_base_os2_source AS (
    ---------------------------------------------------------------------------
    1.0      | 2026-05-12   | siva          | Initial Development
    ---------------------------------------------------------------------------
-============================================================================= 
-*/
+============================================================================= */
+
 WITH source_data_base AS (
 SELECT
     a.ID,
@@ -86,23 +133,23 @@ SELECT
     b.LASTLOGINOTPVERIFIEDDATETIME,
     b.ISOTPLOCKED,
     b.OTPLOCKEND_DATETIME
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER a
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION b
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` a
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` b
     ON a.ID = b.USERID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USERFILE c
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USERFILE` c
     ON b.SELFIEFILEID = c.ID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USERFILE d
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USERFILE` d
     ON b.FONTSIDEDOCFILEID = d.ID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USERFILE e
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USERFILE` e
     ON b.BACKSIDEDOCFILEID = e.ID
 )
 
 SELECT
- TRY_CAST(NULLIF(CAST(ID AS STRING), '') AS BIGINT) AS id,
-TRY_CAST(NULLIF(CAST(TENANT_ID AS STRING), '') AS BIGINT) AS tenant_id,
+ TRY_CAST(ID AS BIGINT) AS id,
+TRY_CAST(TENANT_ID AS BIGINT) AS tenant_id,
 IS_ACTIVE AS is_active,
-TRY_CAST(NULLIF(CAST(CREATION_DATE AS STRING), '') AS TIMESTAMP) AS creation_date,
-TRY_CAST(NULLIF(CAST(LAST_LOGIN AS STRING), '') AS TIMESTAMP) AS last_login,
+TRY_CAST(CREATION_DATE AS TIMESTAMP) AS creation_date,
+TRY_CAST(LAST_LOGIN AS TIMESTAMP) AS last_login,
 NAME AS name,
 MOBILEPHONE AS mobilephone,
 EMAIL AS email,
@@ -110,10 +157,10 @@ USERNAME AS username,
 PASSWORD AS password,
 EXTERNAL_ID AS external_id,
 CPR_NUMBER AS cpr_number,
-TRY_CAST(NULLIF(CAST(DATEOFBIRTH AS STRING), '') AS TIMESTAMP) AS dateofbirth,
+TRY_CAST(DATEOFBIRTH AS TIMESTAMP) AS dateofbirth,
 GENDER AS gender,
 NATIONALITY AS nationality,
-TRY_CAST(NULLIF(CAST(LOGINATTEMPTSFAILED AS STRING), '') AS BIGINT) AS loginattemptsfailed,
+TRY_CAST(LOGINATTEMPTSFAILED AS BIGINT) AS loginattemptsfailed,
 PHONECOUNTRYCODE AS phonecountrycode,
 ISVERIFIED AS isverified,
 SELFIEFILENAME AS selfiefilename,
@@ -121,41 +168,41 @@ FONTSIDEDOCFILENAME AS fontsidedocfilename,
 BACKSIDEDOCFILENAME AS backsidedocfilename,
 USEOUTSYSTEMSLOGIN AS useoutsystemslogin,
 USEOUTSYSTEMSLOGICSOURCE AS useoutsystemslogicsource,
-TRY_CAST(NULLIF(CAST(USEOUTSYSTEMSLOGICDATETIME AS STRING), '') AS TIMESTAMP) AS useoutsystemslogicdatetime,
+TRY_CAST(USEOUTSYSTEMSLOGICDATETIME AS TIMESTAMP) AS useoutsystemslogicdatetime,
 OLDPORTAL_TAMKEENIDENTITYID AS oldportal_tamkeenidentityid,
 ISEMAILVERIFIED AS isemailverified,
-TRY_CAST(NULLIF(CAST(EMAILVERIFIED_DATETIME AS STRING), '') AS TIMESTAMP) AS emailverified_datetime,
+TRY_CAST(EMAILVERIFIED_DATETIME AS TIMESTAMP) AS emailverified_datetime,
 ISMOBILEVERIFIED AS ismobileverified,
-TRY_CAST(NULLIF(CAST(MOBILEVERIFIED_DATETIME AS STRING), '') AS TIMESTAMP) AS mobileverified_datetime,
+TRY_CAST(MOBILEVERIFIED_DATETIME AS TIMESTAMP) AS mobileverified_datetime,
 ISREJECTED AS isrejected,
 REJECTIONREMARK AS rejectionremark,
 SECONDARYPHONENUMBER AS secondaryphonenumber,
 RESETPASSREQUIRED AS resetpassrequired,
-UPPER(NULLIF(TRIM(CAST(SOURCE_SYSTEM_NAME AS STRING)), '')) AS source_system_name,
-TRY_CAST(NULLIF(CAST(DBT_UPDATED_AT AS STRING), '') AS TIMESTAMP) AS dbt_updated_at,
+UPPER(NULLIF(TRIM(SOURCE_SYSTEM_NAME), '')) AS source_system_name,
+TRY_CAST(DBT_UPDATED_AT AS TIMESTAMP) AS dbt_updated_at,
 FALSE AS is_deleted,
-TRY_CAST(NULLIF(CAST(USERID AS STRING), '') AS BIGINT) AS userid,
-TRY_CAST(NULLIF(CAST(SELFIEFILEID AS STRING), '') AS BIGINT) AS selfiefileid,
-TRY_CAST(NULLIF(CAST(FONTSIDEDOCFILEID AS STRING), '') AS BIGINT) AS fontsidedocfileid,
-TRY_CAST(NULLIF(CAST(BACKSIDEDOCFILEID AS STRING), '') AS BIGINT) AS backsidedocfileid,
+TRY_CAST(USERID AS BIGINT) AS userid,
+TRY_CAST(SELFIEFILEID AS BIGINT) AS selfiefileid,
+TRY_CAST(FONTSIDEDOCFILEID AS BIGINT) AS fontsidedocfileid,
+TRY_CAST(BACKSIDEDOCFILEID AS BIGINT) AS backsidedocfileid,
 ISFROMOLDPORTAL AS isfromoldportal,
 OLDPORTAL_TAMKEENPWDHASH AS oldportal_tamkeenpwdhash,
 OLDPORTAL_TAMKEENPWDSALT AS oldportal_tamkeenpwdsalt,
-TRY_CAST(NULLIF(CAST(LASTLOGINOTPVERIFIEDDATETIME AS STRING), '') AS TIMESTAMP) AS lastloginotpverifieddatetime,
+TRY_CAST(LASTLOGINOTPVERIFIEDDATETIME AS TIMESTAMP) AS lastloginotpverifieddatetime,
 ISOTPLOCKED AS isotplocked,
-TRY_CAST(NULLIF(CAST(OTPLOCKEND_DATETIME AS STRING), '') AS TIMESTAMP) AS otplockend_datetime
+TRY_CAST(OTPLOCKEND_DATETIME AS TIMESTAMP) AS otplockend_datetime
 FROM source_data_base
 ),
-user_base_os1_source AS (
+    user_base_os1 AS (
 /*
 ============================================================================
 silver_user_os1.sql
 ============================================================================
-Per-source intermediate Silver model for the User domain Ã¢â‚¬â€ OS1 only.
+Per-source intermediate Silver model for the User domain â€” OS1 only.
 
 Sources (User domain entities):
-  Ã¢Ëœâ€¦ ossys_User                  Ã¢â€ â€™ standard OutSystems user table (anchor)
-    OSUSR_MKZ_USEREXTENSION     Ã¢â€ â€™ user-extension data (CPR number, etc.)
+  â˜… ossys_User                  â†’ standard OutSystems user table (anchor)
+    OSUSR_MKZ_USEREXTENSION     â†’ user-extension data (CPR number, etc.)
 
 Reference SPs:
   - Used implicitly in 14 of 20 OS1 SPs as a JOIN target for created-by /
@@ -171,7 +218,7 @@ A computed `user_type` column makes this explicit.
 Cross-domain note: this is a thin reference-style Silver model. Domain
 Silver models that need user details (Cheque, IBAN, Workflow, etc.) keep
 the user FK column on their rows for downstream re-joining at unified
-Silver / Gold level Ã¢â‚¬â€ they don't replicate user details inline (apart from
+Silver / Gold level â€” they don't replicate user details inline (apart from
 the few cases where the source SP already denormalises them).
 
 Note on OS1 user extension semantics: the `'Customer: ' + name` prefix
@@ -200,8 +247,8 @@ SELECT
     FALSE AS is_deleted,
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER usr
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION UsrExt
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` usr
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` UsrExt
        ON UsrExt.USERID = usr.ID
 )
 SELECT DISTINCT
@@ -209,8 +256,8 @@ SELECT DISTINCT
     CAST(id AS STRING)                                  AS id,
     CAST(tenant_id AS STRING)                           AS tenant_id,
     CAST(is_active AS BOOLEAN)                           AS is_active,
-    TRY_CAST(NULLIF(CAST(creation_date AS STRING), '') AS TIMESTAMP)           AS creation_date,
-    TRY_CAST(NULLIF(CAST(last_login AS STRING), '') AS TIMESTAMP)              AS last_login,
+    TRY_CAST(creation_date AS TIMESTAMP)           AS creation_date,
+    TRY_CAST(last_login AS TIMESTAMP)              AS last_login,
     CAST(name AS STRING)                                AS name,
     CAST(mobilephone AS STRING)                         AS mobilephone,
     CAST(email AS STRING)                               AS email,
@@ -218,10 +265,10 @@ SELECT DISTINCT
     CAST(password AS STRING)                            AS password,
     CAST(external_id AS STRING)                         AS external_id,
     CAST(cpr_number AS STRING)                          AS cpr_number,
-    TRY_CAST(NULLIF(CAST(dateofbirth AS STRING), '') AS DATE)                  AS dateofbirth,
+    TRY_CAST(dateofbirth AS DATE)                  AS dateofbirth,
     CAST(gender AS STRING)                              AS gender,
     CAST(nationality AS STRING)                         AS nationality,
-    TRY_CAST(NULLIF(CAST(loginattemptsfailed AS STRING), '') AS BIGINT)        AS loginattemptsfailed,
+    TRY_CAST(loginattemptsfailed AS BIGINT)        AS loginattemptsfailed,
     CAST(phonecountrycode AS STRING)                    AS phonecountrycode,
     CAST(isverified AS BOOLEAN)                          AS isverified,
     CAST(selfiefilename AS STRING)                      AS selfiefilename,
@@ -229,12 +276,12 @@ SELECT DISTINCT
     CAST(backsidedocfilename AS STRING)                 AS backsidedocfilename,
     CAST(useoutsystemslogin AS BOOLEAN)                  AS useoutsystemslogin,
     CAST(useoutsystemslogicsource AS STRING)            AS useoutsystemslogicsource,
-    TRY_CAST(NULLIF(CAST(useoutsystemslogicdatetime AS STRING), '') AS TIMESTAMP) AS useoutsystemslogicdatetime,
+    TRY_CAST(useoutsystemslogicdatetime AS TIMESTAMP) AS useoutsystemslogicdatetime,
     CAST(oldportal_tamkeenidentityid AS STRING)         AS oldportal_tamkeenidentityid,
     CAST(isemailverified AS BOOLEAN)                     AS isemailverified,
-    TRY_CAST(NULLIF(CAST(emailverified_datetime AS STRING), '') AS TIMESTAMP)   AS emailverified_datetime,
+    TRY_CAST(emailverified_datetime AS TIMESTAMP)   AS emailverified_datetime,
     CAST(ismobileverified AS BOOLEAN)                    AS ismobileverified,
-    TRY_CAST(NULLIF(CAST(mobileverified_datetime AS STRING), '') AS TIMESTAMP)  AS mobileverified_datetime,
+    TRY_CAST(mobileverified_datetime AS TIMESTAMP)  AS mobileverified_datetime,
     CAST(isrejected AS BOOLEAN)                          AS isrejected,
     CAST(rejectionremark AS STRING)                     AS rejectionremark,
     CAST(secondaryphonenumber AS STRING)                AS secondaryphonenumber,
@@ -249,15 +296,15 @@ SELECT DISTINCT
     CAST(isfromoldportal AS BOOLEAN)                     AS isfromoldportal,
     CAST(oldportal_tamkeenpwdhash AS STRING)            AS oldportal_tamkeenpwdhash,
     CAST(oldportal_tamkeenpwdsalt AS STRING)            AS oldportal_tamkeenpwdsalt,
-    TRY_CAST(NULLIF(CAST(lastloginotpverifieddatetime AS STRING), '') AS TIMESTAMP) AS lastloginotpverifieddatetime,
+    TRY_CAST(lastloginotpverifieddatetime AS TIMESTAMP) AS lastloginotpverifieddatetime,
     CAST(isotplocked AS BOOLEAN)                         AS isotplocked,
-    TRY_CAST(NULLIF(CAST(otplockend_datetime AS STRING), '') AS TIMESTAMP)      AS otplockend_datetime,
+    TRY_CAST(otplockend_datetime AS TIMESTAMP)      AS otplockend_datetime,
 
     -- OS1 EXTRA COLUMNS
     CAST(NULL AS STRING)                                AS user_type,
     CAST(NULL AS BOOLEAN)                                AS is_customer
 
-from user_base_os2_source
+FROM user_base_os2
 
 UNION ALL
 
@@ -314,64 +361,65 @@ SELECT DISTINCT
     CAST(user_type AS STRING)                           AS user_type,
     CAST(is_customer AS BOOLEAN)                         AS is_customer
 
-from user_base_os1_source
+FROM user_base_os1
 ),
 
 silver_layer AS (
 SELECT
-    id,
-    tenant_id,
-    is_active,
-    creation_date,
-    last_login,
-    name,
-    mobilephone,
-    email,
-    username,
-    password,
-    external_id,
-    cpr_number,
-    dateofbirth,
-    gender,
-    nationality,
-    loginattemptsfailed,
-    phonecountrycode,
-    isverified,
-    selfiefilename,
-    fontsidedocfilename,
-    backsidedocfilename,
-    useoutsystemslogin,
-    useoutsystemslogicsource,
-    useoutsystemslogicdatetime,
-    oldportal_tamkeenidentityid,
-    isemailverified,
-    emailverified_datetime,
-    ismobileverified,
-    mobileverified_datetime,
-    isrejected,
-    rejectionremark,
-    secondaryphonenumber,
-    resetpassrequired,
-    source_system_name,
-    dbt_updated_at,
-    is_deleted,
-    userid,
-    selfiefileid,
-    fontsidedocfileid,
-    backsidedocfileid,
-    isfromoldportal,
-    oldportal_tamkeenpwdhash,
-    oldportal_tamkeenpwdsalt,
-    lastloginotpverifieddatetime,
-    isotplocked,
-    otplockend_datetime,
-    user_type,
-    is_customer
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.user_base
+    `id`,
+    `tenant_id`,
+    `is_active`,
+    `creation_date`,
+    `last_login`,
+    `name`,
+    `mobilephone`,
+    `email`,
+    `username`,
+    `password`,
+    `external_id`,
+    `cpr_number`,
+    `dateofbirth`,
+    `gender`,
+    `nationality`,
+    `loginattemptsfailed`,
+    `phonecountrycode`,
+    `isverified`,
+    `selfiefilename`,
+    `fontsidedocfilename`,
+    `backsidedocfilename`,
+    `useoutsystemslogin`,
+    `useoutsystemslogicsource`,
+    `useoutsystemslogicdatetime`,
+    `oldportal_tamkeenidentityid`,
+    `isemailverified`,
+    `emailverified_datetime`,
+    `ismobileverified`,
+    `mobileverified_datetime`,
+    `isrejected`,
+    `rejectionremark`,
+    `secondaryphonenumber`,
+    `resetpassrequired`,
+    `source_system_name`,
+    `dbt_updated_at`,
+    `is_deleted`,
+    `userid`,
+    `selfiefileid`,
+    `fontsidedocfileid`,
+    `backsidedocfileid`,
+    `isfromoldportal`,
+    `oldportal_tamkeenpwdhash`,
+    `oldportal_tamkeenpwdsalt`,
+    `lastloginotpverifieddatetime`,
+    `isotplocked`,
+    `otplockend_datetime`,
+    `user_type`,
+    `is_customer`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`user_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'id'),
         (2, 'tenant_id'),
         (3, 'is_active'),
@@ -420,10 +468,12 @@ bronze_columns(column_position, column_name) AS (
         (46, 'otplockend_datetime'),
         (47, 'user_type'),
         (48, 'is_customer')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'id'),
         (2, 'tenant_id'),
         (3, 'is_active'),
@@ -472,6 +522,7 @@ silver_columns(column_position, column_name) AS (
         (46, 'otplockend_datetime'),
         (47, 'user_type'),
         (48, 'is_customer')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

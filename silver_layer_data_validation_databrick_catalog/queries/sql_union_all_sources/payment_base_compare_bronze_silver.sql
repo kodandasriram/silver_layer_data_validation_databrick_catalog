@@ -1,34 +1,85 @@
+-- Compare bronze-layer query output with silver-layer table output for payment_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\payment_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\payment_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for payment_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: payment_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for payment_base.
+Column order and typed NULL placeholders follow dbt model: payment_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH payment_base_os1_source AS (
+/*
+ =================================================================================================
+ 
+Name        : PAYMENT_BASE
+Description : This model extracts and transforms enterprise training-related
+              attributes from the OS2 source system Bronze Layer and loads them
+              into the TRAINING_ENTERPRISE target table as part of the Silver
+              Layer data pipeline.
+ 
+              The model enriches training application support records with
+              application, assessment, customer, training program, provider,
+              certification, and payment-related details. It standardizes
+              training dates, financial metrics, share percentages, and
+              workflow statuses for enterprise training analytics and reporting.
+ 
+Source Tables : payment_base_os1
+                payment_base_os2
+                payment_base_mis
+ 
+Target Table : PAYMENT_BASE
+Load Type    : Full Load
+Materialized : table
+Format       : PARQUET
+Tags         : daily
+ 
+Revision History:
+--------------------------------------------------------------
+ 
+Version | Date       | Author     | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Vignesh  | Initial version
+ 
+================================================================================================= 
+*/
+
+
+
+WITH
+    payment_base_os1 AS (
 /*
 ============================================================================
 silver_payment_os1.sql
 ============================================================================
-Per-source intermediate Silver model for the Payment domain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â OS1 only.
+Per-source intermediate Silver model for the Payment domain â€” OS1 only.
 
 Source: OSUSR_PX1_PAYMENT (anchor)
 Reference SPs:
-  - RPT-180_neoTamkeen_Applications_Payment   (thin slice ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â merged in)
-  - RPT-192_neoTamkeen_Payments               (canonical wide payment view ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+  - RPT-180_neoTamkeen_Applications_Payment   (thin slice â€” merged in)
+  - RPT-192_neoTamkeen_Payments               (canonical wide payment view â€”
                                                  itself a 2-branch UNION ALL)
-  - RPT-187, RPT-197 (status history)         ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ handled in silver_workflow_os1
+  - RPT-187, RPT-197 (status history)         â†’ handled in silver_workflow_os1
 
 Structure decision:
 
   RPT-192 has TWO branches, distinguished by program type:
 
-  Branch 1 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â REGULAR PAYMENTS:
+  Branch 1 â€” REGULAR PAYMENTS:
     Filter: payment_reference NOT LIKE 'TP%' OR program_id = 4 (Train & Place)
     Total Amount source: pay.TOTALAMOUNT
     Item-level columns: from pay row directly
     Training payment type: NULL
 
-  Branch 2 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â TRAIN-AND-PLACE TRAINING PAYMENTS:
+  Branch 2 â€” TRAIN-AND-PLACE TRAINING PAYMENTS:
     Filter: payment_reference LIKE 'TP%' AND program_id <> 4
     Total Amount source: ASD.TAMKEENSHARE (joined via APPLICATIONSUPPORTDETAILS)
     Item-level columns: from APPLICATIONEMPLOYEETRAINING (AET)
@@ -36,7 +87,7 @@ Structure decision:
 
   Both branches share the same payment row but pull amounts/items from
   different sources. They are mutually exclusive (the WHERE clauses partition
-  the population), so UNION ALL is correct ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no row is in both branches.
+  the population), so UNION ALL is correct â€” no row is in both branches.
 
   The payment_subtype column identifies which branch:
     - REGULAR_PAYMENT
@@ -44,21 +95,21 @@ Structure decision:
 
 Note on the #Qust temp table in RPT-192: this CTE filters application
 answers to a specific SubQuestion (TM_SQ8) and joins it into the SELECT.
-But the joined column `CurSt` is never selected in the final output ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+But the joined column `CurSt` is never selected in the final output â€”
 it appears to be dead code. Omitted here.
 
 Lookups joined inline (both branches):
-  - OSUSR_PX1_PAYMENTREQUESTSTATUS        ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ workflow status label
-  - OSUSR_PX1_PAYEE                       ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ payee label
-  - OSUSR_PX1_PAYMENTTYPE                 ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ payment type ('Fawateer' etc.)
-  - OSUSR_PX1_PAYMENTTOVENDORTYPE         ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ payment-to-vendor type (share)
-  - OSUSR_PX1_PROGRAM, OSUSR_PX1_PROGRAMTYPE ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ program context
-  - OSUSR_PX1_APPLICATIONSTATUS           ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ app workflow status
-  - OSUSR_PX1_ERPBATCH21, OSUSR_PX1_ERPINVOICE21 ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ERP traceability
-  - OSUSR_PX1_PAYMENTREQUESTTYPE21        ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ payment request type
-  - OSUSR_PX1_SUPPORT                     ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ support category
-  - OSUSR_PX1_TRAININGPROVIDER, OSUSR_D1O_VENDOR ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ counterparties
-  - ossys_User (ÃƒÆ’Ã¢â‚¬â€7)                       ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ various people roles
+  - OSUSR_PX1_PAYMENTREQUESTSTATUS        â†’ workflow status label
+  - OSUSR_PX1_PAYEE                       â†’ payee label
+  - OSUSR_PX1_PAYMENTTYPE                 â†’ payment type ('Fawateer' etc.)
+  - OSUSR_PX1_PAYMENTTOVENDORTYPE         â†’ payment-to-vendor type (share)
+  - OSUSR_PX1_PROGRAM, OSUSR_PX1_PROGRAMTYPE â†’ program context
+  - OSUSR_PX1_APPLICATIONSTATUS           â†’ app workflow status
+  - OSUSR_PX1_ERPBATCH21, OSUSR_PX1_ERPINVOICE21 â†’ ERP traceability
+  - OSUSR_PX1_PAYMENTREQUESTTYPE21        â†’ payment request type
+  - OSUSR_PX1_SUPPORT                     â†’ support category
+  - OSUSR_PX1_TRAININGPROVIDER, OSUSR_D1O_VENDOR â†’ counterparties
+  - ossys_User (Ã—7)                       â†’ various people roles
 
 Cross-domain note: APPLICATIONID, IBANID, VENDORID, TRAININGPROVIDERID,
 and the 7 user FKs are preserved for downstream re-joining.
@@ -113,7 +164,7 @@ SELECT
     ast.LABEL                                                             AS app_status,
     App.IDENTIFIER                                                        AS app_ref,
 
-    -- Amounts (regular branch ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â directly from pay row)
+    -- Amounts (regular branch â€” directly from pay row)
     pay.TOTALAMOUNT                                                       AS total_amount,
     Pay.TOTALITEMNETCOST                                                  AS total_item_cost,
     pay.TOTALVATAUMOUNT                                                   AS total_vat_amount,
@@ -166,28 +217,28 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENT pay
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTREQUESTSTATUS  PayReqSta  ON PayReqSta.ID  = pay.PAYMENTREQUESTSTATUSID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYEE                 payee      ON payee.ID      = pay.PAYEEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTTYPE           PayTyp     ON PayTyp.ID     = pay.PAYMENTTYPEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATION           App        ON App.ID        = pay.APPLICATIONID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PROGRAM               Program    ON Program.ID    = App.PROGRAMID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PROGRAMTYPE           PrgTyp     ON PrgTyp.ID     = Program.PROGRAMTYPEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUS     ast        ON ast.ID        = App.APPLICATIONSTATUSID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTTOVENDORTYPE   PayVenTyp  ON PayVenTyp.ID  = pay.PAYMENTTOVENDORTYPEID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      Usr_AprvBy ON Usr_AprvBy.ID = pay.APPROVEDBY
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      Usr_Adt    ON Usr_Adt.ID    = pay.PAYMENTAUDITORID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      Usr_SB     ON Usr_SB.ID     = pay.SENTBACKTOCUSTOMERBY
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      Usr_Cor    ON Usr_Cor.ID    = pay.CORRECTIONTEAMMEMBERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      Usr_Aprv   ON Usr_Aprv.ID   = pay.APPROVERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      Usr_Cust   ON Usr_Cust.ID   = pay.CUSTOMERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_ERPBATCH            ErpBatch   ON ErpBatch.ID   = pay.ERPBATCHID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_ERPINVOICE          ErpInv     ON ErpInv.ID     = pay.ERPINVOICEID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTREQUESTTYPE  PayReqTyp  ON PayReqTyp.ID  = pay.PAYMENTREQUESTTYPE
-
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TRAININGPROVIDER      TP         ON TP.ID         = pay.TRAININGPROVIDERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_D1O_VENDOR                Vndr       ON Vndr.ID       = pay.VENDORID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION usrext
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENT` pay
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTREQUESTSTATUS`  PayReqSta  ON PayReqSta.ID  = pay.PAYMENTREQUESTSTATUSID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYEE`                 payee      ON payee.ID      = pay.PAYEEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTTYPE`           PayTyp     ON PayTyp.ID     = pay.PAYMENTTYPEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATION`           App        ON App.ID        = pay.APPLICATIONID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PROGRAM`               Program    ON Program.ID    = App.PROGRAMID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PROGRAMTYPE`           PrgTyp     ON PrgTyp.ID     = Program.PROGRAMTYPEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUS`     ast        ON ast.ID        = App.APPLICATIONSTATUSID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTTOVENDORTYPE`   PayVenTyp  ON PayVenTyp.ID  = pay.PAYMENTTOVENDORTYPEID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      Usr_AprvBy ON Usr_AprvBy.ID = pay.APPROVEDBY
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      Usr_Adt    ON Usr_Adt.ID    = pay.PAYMENTAUDITORID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      Usr_SB     ON Usr_SB.ID     = pay.SENTBACKTOCUSTOMERBY
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      Usr_Cor    ON Usr_Cor.ID    = pay.CORRECTIONTEAMMEMBERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      Usr_Aprv   ON Usr_Aprv.ID   = pay.APPROVERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      Usr_Cust   ON Usr_Cust.ID   = pay.CUSTOMERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_ERPBATCH`            ErpBatch   ON ErpBatch.ID   = pay.ERPBATCHID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_ERPINVOICE`          ErpInv     ON ErpInv.ID     = pay.ERPINVOICEID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTREQUESTTYPE`  PayReqTyp  ON PayReqTyp.ID  = pay.PAYMENTREQUESTTYPE
+/*LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_SUPPORT`               Sup        ON Sup.ID        = pay.SUPPORTCATEGORY*/
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TRAININGPROVIDER`      TP         ON TP.ID         = pay.TRAININGPROVIDERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_D1O_VENDOR`                Vndr       ON Vndr.ID       = pay.VENDORID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` usrext
     ON usrext.USERID = App.USERID
 
 WHERE pay.PAYMENTREFERENCENUMBER NOT LIKE 'TP%'
@@ -245,7 +296,7 @@ SELECT
     ast.LABEL                                                             AS app_status,
     App.IDENTIFIER                                                        AS app_ref,
 
-    -- Amounts (Train-and-Place branch ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â pulled from training/support details)
+    -- Amounts (Train-and-Place branch â€” pulled from training/support details)
     ASD.TAMKEENSHARE                                                      AS total_amount,
     AET.COSTOFTRAINING                                                    AS total_item_cost,
     AET.VAT                                                               AS total_vat_amount,
@@ -297,41 +348,39 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENT pay
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTREQUESTSTATUS            PayReqSta  ON PayReqSta.ID  = pay.PAYMENTREQUESTSTATUSID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYEE                           payee      ON payee.ID      = pay.PAYEEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTTYPE                     PayTyp     ON PayTyp.ID     = pay.PAYMENTTYPEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5W2_APPLICATIONEMPLOYEETRAINING     AET        ON AET.PAYMENTID = pay.ID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5W2_APPLICATIONEMPLOYEE             AE         ON AE.ID         = AET.APPLICATIONEMPLOYEEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATION                     App        ON App.ID        = AE.APPLICATIONID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSUPPORTDETAILS       ASD        ON ASD.APPLICATIONID = App.ID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PROGRAM                         Program    ON Program.ID    = App.PROGRAMID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PROGRAMTYPE                     PrgTyp     ON PrgTyp.ID     = Program.PROGRAMTYPEID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUS               ast        ON ast.ID        = App.APPLICATIONSTATUSID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTTOVENDORTYPE             PayVenTyp  ON PayVenTyp.ID  = pay.PAYMENTTOVENDORTYPEID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                                Usr_AprvBy ON Usr_AprvBy.ID = pay.APPROVEDBY
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                                Usr_Adt    ON Usr_Adt.ID    = pay.PAYMENTAUDITORID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                                Usr_SB     ON Usr_SB.ID     = pay.SENTBACKTOCUSTOMERBY
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                                Usr_Cor    ON Usr_Cor.ID    = pay.CORRECTIONTEAMMEMBERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                                Usr_Aprv   ON Usr_Aprv.ID   = pay.APPROVERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                                Usr_Cust   ON Usr_Cust.ID   = pay.CUSTOMERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_ERPBATCH                      ErpBatch   ON ErpBatch.ID   = pay.ERPBATCHID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_ERPINVOICE                    ErpInv     ON ErpInv.ID     = pay.ERPINVOICEID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTREQUESTTYPE            PayReqTyp  ON PayReqTyp.ID  = pay.PAYMENTREQUESTTYPE
-
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TRAININGPROVIDER                TP         ON TP.ID         = pay.TRAININGPROVIDERID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_D1O_VENDOR                          Vndr       ON Vndr.ID       = pay.VENDORID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TRAININGPAYMENTTYPE4             TrnPayTyp  ON TrnPayTyp.ID  = AET.TRAININGPAYMENTTYPEID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION usrext
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENT` pay
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTREQUESTSTATUS`            PayReqSta  ON PayReqSta.ID  = pay.PAYMENTREQUESTSTATUSID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYEE`                           payee      ON payee.ID      = pay.PAYEEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTTYPE`                     PayTyp     ON PayTyp.ID     = pay.PAYMENTTYPEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5W2_APPLICATIONEMPLOYEETRAINING`     AET        ON AET.PAYMENTID = pay.ID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5W2_APPLICATIONEMPLOYEE`             AE         ON AE.ID         = AET.APPLICATIONEMPLOYEEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATION`                     App        ON App.ID        = AE.APPLICATIONID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSUPPORTDETAILS`       ASD        ON ASD.APPLICATIONID = App.ID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PROGRAM`                         Program    ON Program.ID    = App.PROGRAMID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PROGRAMTYPE`                     PrgTyp     ON PrgTyp.ID     = Program.PROGRAMTYPEID
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUS`               ast        ON ast.ID        = App.APPLICATIONSTATUSID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTTOVENDORTYPE`             PayVenTyp  ON PayVenTyp.ID  = pay.PAYMENTTOVENDORTYPEID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                                Usr_AprvBy ON Usr_AprvBy.ID = pay.APPROVEDBY
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                                Usr_Adt    ON Usr_Adt.ID    = pay.PAYMENTAUDITORID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                                Usr_SB     ON Usr_SB.ID     = pay.SENTBACKTOCUSTOMERBY
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                                Usr_Cor    ON Usr_Cor.ID    = pay.CORRECTIONTEAMMEMBERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                                Usr_Aprv   ON Usr_Aprv.ID   = pay.APPROVERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                                Usr_Cust   ON Usr_Cust.ID   = pay.CUSTOMERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_ERPBATCH`                      ErpBatch   ON ErpBatch.ID   = pay.ERPBATCHID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_ERPINVOICE`                    ErpInv     ON ErpInv.ID     = pay.ERPINVOICEID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTREQUESTTYPE`            PayReqTyp  ON PayReqTyp.ID  = pay.PAYMENTREQUESTTYPE
+/*LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_SUPPORT`                         Sup        ON Sup.ID        = pay.SUPPORTCATEGORY*/
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TRAININGPROVIDER`                TP         ON TP.ID         = pay.TRAININGPROVIDERID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_D1O_VENDOR`                          Vndr       ON Vndr.ID       = pay.VENDORID
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TRAININGPAYMENTTYPE4`             TrnPayTyp  ON TrnPayTyp.ID  = AET.TRAININGPAYMENTTYPEID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` usrext
     ON usrext.USERID = App.USERID
 
 WHERE pay.PAYMENTREFERENCENUMBER LIKE 'TP%'
   AND App.PROGRAMID <> 4
 ),
-payment_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
-/*
- =================================================================================================
+    payment_base_os2 AS (
+/* =================================================================================================
 
 Name        : payment_base_os2
 Description : This model extracts and transforms payment request-related attributes
@@ -379,10 +428,10 @@ Version | Date       | Author  | Description
 --------------------------------------------------------------
 1.0     | 2026-05-11 |    Abitha     | Initial version
 
-================================================================================================= 
-*/
+================================================================================================= */
+
 -- ============================================================================
--- CTE 1: Ranked MOIC CR Details Ã¢â‚¬â€ latest record per CR number
+-- CTE 1: Ranked MOIC CR Details â€” latest record per CR number
 -- ============================================================================
 WITH CTE_MOIC AS (
     SELECT
@@ -395,7 +444,7 @@ WITH CTE_MOIC AS (
             PARTITION BY CRNUMBER
             ORDER BY UPDATEDON DESC
         ) AS RNK
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MYA_MOIC_CRDETAILS
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MYA_MOIC_CRDETAILS`
 ),
 
 MOIC AS (
@@ -403,6 +452,7 @@ MOIC AS (
     FROM CTE_MOIC
     WHERE RNK = 1
 ),
+
 
 -- ============================================================================
 -- CTE 2: Payment Request base
@@ -425,8 +475,9 @@ CTE_PAYMENT_REQUEST AS (
         SupportAreaId,
         CREATEDBY,
         UPDATEDON
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTREQUEST
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTREQUEST`
 ),
+
 
 -- ============================================================================
 -- CTE 3: Payment Support base
@@ -438,8 +489,9 @@ CTE_PAYMENT_SUPPORT AS (
         TKShareTotal,
         CUSTOMERSHARETOTAL,
         PaymentResquestId
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTSUPPORT
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTSUPPORT`
 ),
+
 
 -- ============================================================================
 -- CTE 4: Final assembled payment request rows
@@ -537,72 +589,79 @@ CTE_PAYMENT_REQUEST_FINAL AS (
 		 actdef.ID AS activity_definition_id,
 		 CASE WHEN U.ID IS NOT NULL THEN U.NAME ELSE 'n/a' END AS owner,
 		 EMP.totalmonthsexperience AS total_months_experience,
-
+		 
         PR.CREATEDBY                                                                AS created_by,
         PR.UPDATEDON                                                                AS updatedon,
         FALSE                                                                       AS is_deleted,
-        UPPER(NULLIF(TRIM(CAST('NEO2' AS STRING)), ''))                                        AS source_system_name,
+        UPPER(NULLIF(TRIM('NEO2'), ''))                                        AS source_system_name,
         CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)                    AS dbt_updated_at,
-        ROW_NUMBER() OVER (PARTITION BY APPSUP.ID ORDER BY APPSUP.UPDATEDON DESC NULLS LAST, APPSUP.CREATEDON DESC NULLS LAST) AS rnk
+        ROW_NUMBER() OVER (
+
+    PARTITION BY APPSUP.ID
+
+    ORDER BY APPSUP.UPDATEDON DESC, APPSUP.CREATEDON DESC
+
+  ) AS rnk
 
     FROM CTE_PAYMENT_REQUEST PR
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION                A          ON A.ID                    = PR.APPLICATIONID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION4`                A          ON A.ID                    = PR.APPLICATIONID
     LEFT JOIN CTE_PAYMENT_SUPPORT                                           PAYSUP     ON PAYSUP.PaymentResquestId = PR.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION             PV         ON PV.ID                   = A.PROGRAMVERSIONID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM                    P          ON P.ID                    = PV.PROGRAMID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTREQUESTSTATUS       PRS        ON PRS.CODE                = PR.PAYMENTSTATUSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_PAYMENTREQUESTTYPES        PRT        ON PRT.CODE                = PR.PAYMENTREQUESTTYPEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_PAYMENTREQUESTTYPEPARENT   PRTP       ON PRTP.CODE               = PRT.PaymentRequestTypeParentId
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_PAYEETYPE                  PT         ON PT.CODE                 = PR.PAYEETYPEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_IBAN                       I          ON I.ID                    = PR.IBANID2
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_BANK                       BANK       ON BANK.ID                 = I.BankId
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_IBANSTATUS                 IBST       ON IBST.CODE               = I.IBANSTATUSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE            CP         ON CP.ID                   = I.CUSTOMERPROFILEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER                   C          ON C.ID                    = CP.CUSTOMERID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL                 IND        ON IND.ID                  = CP.CUSTOMERID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY                    CMP        ON CMP.ID                  = CP.CUSTOMERID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_SUPPORTAREA                SUPPAREA   ON SUPPAREA.CODE            = PR.SupportAreaId
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT         APPSUP     ON APPSUP.ID               = PAYSUP.ApplicationSupportId
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_EXTERNALPROVIDER           PROVOVERSEAS ON PROVOVERSEAS.ID        = APPSUP.EXTERNALPROVIDERID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_COUNTRY                    COUNTRYVENDOR ON COUNTRYVENDOR.ID      = PROVOVERSEAS.COUNTRYID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION             PROGVER    ON PROGVER.ID              = A.PROGRAMVERSIONID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION`             PV         ON PV.ID                   = A.PROGRAMVERSIONID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAM`                    P          ON P.ID                    = PV.PROGRAMID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTREQUESTSTATUS`       PRS        ON PRS.CODE                = PR.PAYMENTSTATUSID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_PAYMENTREQUESTTYPES`        PRT        ON PRT.CODE                = PR.PAYMENTREQUESTTYPEID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_PAYMENTREQUESTTYPEPARENT`   PRTP       ON PRTP.CODE               = PRT.PaymentRequestTypeParentId
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_PAYEETYPE`                  PT         ON PT.CODE                 = PR.PAYEETYPEID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_IBAN`                       I          ON I.ID                    = PR.IBANID2
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_BANK`                       BANK       ON BANK.ID                 = I.BankId
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_IBANSTATUS`                 IBST       ON IBST.CODE               = I.IBANSTATUSID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE`            CP         ON CP.ID                   = I.CUSTOMERPROFILEID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`                   C          ON C.ID                    = CP.CUSTOMERID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL`                 IND        ON IND.ID                  = CP.CUSTOMERID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY`                    CMP        ON CMP.ID                  = CP.CUSTOMERID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_SUPPORTAREA`                SUPPAREA   ON SUPPAREA.CODE            = PR.SupportAreaId
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORT`         APPSUP     ON APPSUP.ID               = PAYSUP.ApplicationSupportId
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_EXTERNALPROVIDER`           PROVOVERSEAS ON PROVOVERSEAS.ID        = APPSUP.EXTERNALPROVIDERID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_COUNTRY`                    COUNTRYVENDOR ON COUNTRYVENDOR.ID      = PROVOVERSEAS.COUNTRYID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION`             PROGVER    ON PROGVER.ID              = A.PROGRAMVERSIONID
     LEFT JOIN MOIC                                                                     ON MOIC.APPLICATIONID      = A.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTTRAINING            PAYTRAIN   ON PAYTRAIN.PaymentSupportId = PAYSUP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAINING                   TRA        ON TRA.ApplicationSupportId = APPSUP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAININGPAYMENTTYPE        TRAPAY     ON TRAPAY.CODE             = TRA.TrainingPaymentTypeId
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTWAGE                PAYWAGE    ON PAYWAGE.PaymentSupportId = PAYSUP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_EMPLOYEE                   EMP        ON EMP.APPLICATIONSUPPORTID = APPSUP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER                   OJTCUS     ON OJTCUS.ID               = EMP.EMPLOYERID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY                    OJTCMP     ON OJTCMP.ID               = OJTCUS.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER                   INDNAME    ON INDNAME.ID              = APPSUP.INDIVIDUALID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL                 CUSINDAPP  ON CUSINDAPP.ID            = APPSUP.INDIVIDUALID
-	LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENT ass
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTTRAINING`            PAYTRAIN   ON PAYTRAIN.PaymentSupportId = PAYSUP.ID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAINING`                   TRA        ON TRA.ApplicationSupportId = APPSUP.ID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAININGPAYMENTTYPE`        TRAPAY     ON TRAPAY.CODE             = TRA.TrainingPaymentTypeId
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTWAGE`                PAYWAGE    ON PAYWAGE.PaymentSupportId = PAYSUP.ID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_EMPLOYEE`                   EMP        ON EMP.APPLICATIONSUPPORTID = APPSUP.ID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`                   OJTCUS     ON OJTCUS.ID               = EMP.EMPLOYERID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY`                    OJTCMP     ON OJTCMP.ID               = OJTCUS.ID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`                   INDNAME    ON INDNAME.ID              = APPSUP.INDIVIDUALID
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL`                 CUSINDAPP  ON CUSINDAPP.ID            = APPSUP.INDIVIDUALID
+	LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENT` ass
     ON ass.ID = APPSUP.APPLICATIONID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_PROCESS pro
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_PROCESS` pro
     ON pro.TOP_PROCESS_ID = ass.PROCESSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY act
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY` act
     ON act.Process_Id = pro.Id
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS APST
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` APST
         ON A.APPLICATIONSTATUSID = APST.CODE
-	LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_DEFINITION actdef
+	LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_DEFINITION` actdef
     ON act.Activity_Def_Id = actdef.Id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_HMY_ACTIVITYEXTENDED act_ext
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_HMY_ACTIVITYEXTENDED` act_ext
     ON act_ext.ID = act.Id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2FH_APPLICATIONASSESSMENTACTIONS actions
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2FH_APPLICATIONASSESSMENTACTIONS` actions
     ON actions.KEY = act_ext.SELECTEDACTIONKEY
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_DEF_ROLE ADR
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_DEF_ROLE` ADR
     ON actdef.Id = ADR.Activity_Def_Id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_ROLE R
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_ROLE` R
     ON ADR.Role_Id = R.ID
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER U
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` U
     ON act.User_Id = U.ID
 
 )
+
 
 SELECT
     extract_date,
@@ -666,44 +725,28 @@ SELECT
 FROM CTE_PAYMENT_REQUEST_FINAL app
 WHERE rnk = 1
 ),
-payment_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-)
+    payment_base_mis AS (
 /*
 ============================================================================
 silver_payment_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the Payment domain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â MIS only.
+Per-source intermediate Silver model for the Payment domain â€” MIS only.
 
 The Payment domain captures payment-request records across all program types
-in MIS. Each program type has its own payment-request table ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â these are
+in MIS. Each program type has its own payment-request table â€” these are
 PARALLEL entities (each program type writes payments to its own table
 independently, with its own schema). They are UNIONed (not joined).
 
 Sources (9 payment-request tables):
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ mis_paymentreq                          ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Individual application payments
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tws_wagepaymentrequest                  ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ TWS wage payment requests
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tws_trainingenrollmentpaymentrequest    ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ TWS training enrollment payments
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_espaymentrequest                   ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ES payment requests
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_aubpayment                         ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ AUB bank payment batches
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_invoiceforgp                       ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ GP invoice payments
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_benefitpayment                     ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Benefit payments (online batches)
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_businesscontinuitysupportpayment   ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ BC Support payments
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_onlinepb                           ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Online payment batches
+  â˜… mis_paymentreq                          â†’ Individual application payments
+  â˜… tws_wagepaymentrequest                  â†’ TWS wage payment requests
+  â˜… tws_trainingenrollmentpaymentrequest    â†’ TWS training enrollment payments
+  â˜… tmkn_espaymentrequest                   â†’ ES payment requests
+  â˜… tmkn_aubpayment                         â†’ AUB bank payment batches
+  â˜… tmkn_invoiceforgp                       â†’ GP invoice payments
+  â˜… tmkn_benefitpayment                     â†’ Benefit payments (online batches)
+  â˜… tmkn_businesscontinuitysupportpayment   â†’ BC Support payments
+  â˜… tmkn_onlinepb                           â†’ Online payment batches
 
 Reference SPs:
   - RPT-059 (mis_paymentreq), RPT-060 (mis_paymentreq SH)
@@ -715,7 +758,7 @@ Reference SPs:
 
 Cross-domain note: RPT-049 / RPT-046 etc. join payment tables to
 tws_enterpriseapplication, tmkn_company, tmkn_pid for denormalised display.
-Those joins are NOT performed here ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â payments stay focused on the payment
+Those joins are NOT performed here â€” payments stay focused on the payment
 entity itself, and FK columns (parent_application_id, company_id) are
 preserved for downstream re-joining at the unified Silver layer.
 
@@ -725,7 +768,7 @@ casts. The payment_subtype + mis_source_table pair identifies the row's
 origin.
 
 WHERE clause from RPT-059 (filtering by specific product/PID GUIDs) is
-omitted ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Silver should preserve all payment requests; report-specific
+omitted â€” Silver should preserve all payment requests; report-specific
 filters belong in Gold/AGG.
 ============================================================================
 */
@@ -768,16 +811,176 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2))                         AS verified_amount,
 
     -- Status / workflow (decoded)
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END            AS state,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END           AS status_reason,
-    CASE WHEN p.mis_paymentprocessed IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('mis_paymentprocessed') || '|' || CAST(p.mis_paymentprocessed AS STRING)) END AS payment_processed,
-    CASE WHEN p.mis_sentbackbefore IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('mis_sentbackbefore') || '|' || CAST(p.mis_sentbackbefore AS STRING)) END   AS sent_back_before,
-    CASE WHEN p.mis_paymentstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('mis_paymentstatus') || '|' || CAST(p.mis_paymentstatus AS STRING)) END    AS payment_status,
-    CASE WHEN p.mis_paymenttype IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('mis_paymenttype') || '|' || CAST(p.mis_paymenttype AS STRING)) END      AS payment_type,
-    CASE WHEN p.mis_payableto IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('mis_payableto') || '|' || CAST(p.mis_payableto AS STRING)) END        AS payable_to,
-    CASE WHEN p.tmkn_violationstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('tmkn_violationstatus') || '|' || CAST(p.tmkn_violationstatus AS STRING)) END AS violation_status,
-    CASE WHEN p.mis_hascommitedtogp IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('mis_hascommitedtogp') || '|' || CAST(p.mis_hascommitedtogp AS STRING)) END  AS has_committed_to_gp,
-    CASE WHEN p.tmkn_financeapproval IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentreq') || '|' || lower('tmkn_financeapproval') || '|' || CAST(p.tmkn_financeapproval AS STRING)) END AS finance_approval,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+)            AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+)           AS status_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('mis_paymentprocessed')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.mis_paymentprocessed AS STRING)
+
+) AS payment_processed,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('mis_sentbackbefore')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.mis_sentbackbefore AS STRING)
+
+)   AS sent_back_before,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('mis_paymentstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.mis_paymentstatus AS STRING)
+
+)    AS payment_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('mis_paymenttype')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.mis_paymenttype AS STRING)
+
+)      AS payment_type,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('mis_payableto')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.mis_payableto AS STRING)
+
+)        AS payable_to,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_violationstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_violationstatus AS STRING)
+
+) AS violation_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('mis_hascommitedtogp')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.mis_hascommitedtogp AS STRING)
+
+)  AS has_committed_to_gp,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentreq')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_financeapproval')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_financeapproval AS STRING)
+
+) AS finance_approval,
     CAST(NULL AS STRING)                                AS workflow_status,
     CAST(NULL AS STRING)                                AS is_flagged,
 
@@ -797,7 +1000,7 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_PAYMENTREQBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_PAYMENTREQBASE` p
 
 UNION ALL
 
@@ -834,8 +1037,40 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2)),
     CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagepaymentrequest') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagepaymentrequest') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagepaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagepaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
@@ -844,8 +1079,40 @@ SELECT
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
-    CASE WHEN p.tws_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagepaymentrequest') || '|' || lower('tws_workflowstatus') || '|' || CAST(p.tws_workflowstatus AS STRING)) END,
-    CASE WHEN p.tws_is_flagged IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagepaymentrequest') || '|' || lower('tws_is_flagged') || '|' || CAST(p.tws_is_flagged AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagepaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tws_workflowstatus AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagepaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('tws_is_flagged')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tws_is_flagged AS STRING)
+
+),
 
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
@@ -857,7 +1124,7 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGEPAYMENTREQUESTBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGEPAYMENTREQUESTBASE` p
 
 UNION ALL
 
@@ -894,11 +1161,59 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2)),
     CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollmentpaymentrequest') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollmentpaymentrequest') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollmentpaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollmentpaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
-    CASE WHEN p.tws_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollmentpaymentrequest') || '|' || lower('tws_workflowstatus') || '|' || CAST(p.tws_workflowstatus AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollmentpaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tws_workflowstatus AS STRING)
+
+),
     CAST(NULL AS STRING),
 
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
@@ -909,7 +1224,7 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TRAININGENROLLMENTPAYMENTREQUESTBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TRAININGENROLLMENTPAYMENTREQUESTBASE` p
 
 UNION ALL
 
@@ -941,22 +1256,86 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2)),
     CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_espaymentrequest') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_espaymentrequest') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_espaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_espaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
-    CASE WHEN p.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_espaymentrequest') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(p.tmkn_workflowstatus AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_espaymentrequest')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_workflowstatus AS STRING)
+
+),
     CAST(NULL AS STRING),
 
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     p.ownerid,
 
     CAST(NULL AS BOOLEAN),
-	CASE WHEN p.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('TMKN_ESPAYMENTREQUESTBASE') || '|' || lower('TMKN_WORKFLOWSTATUS') || '|' || CAST(p.tmkn_workflowstatus AS STRING)) END AS name,  
+	WF.name AS name,  
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_ESPAYMENTREQUESTBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_ESPAYMENTREQUESTBASE` p
+LEFT JOIN (
+
+    SELECT s.value AS name, s.attributevalue AS id
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` s
+
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` e
+
+      ON s.objecttypecode = e.objecttypecode
+
+    WHERE e.name = 'TMKN_ESPAYMENTREQUESTBASE'
+
+      AND s.attributename = 'TMKN_WORKFLOWSTATUS'
+
+) WF
+    ON WF.ID = p.tmkn_workflowstatus
 
 
 UNION ALL
@@ -982,10 +1361,58 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2)),
     CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_aubpayment') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_aubpayment') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_aubpayment')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_aubpayment')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING),
-    CASE WHEN p.tmkn_paymentstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_aubpayment') || '|' || lower('tmkn_paymentstatus') || '|' || CAST(p.tmkn_paymentstatus AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_aubpayment')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_paymentstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_paymentstatus AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
@@ -998,7 +1425,7 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_AUBPAYMENTBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_AUBPAYMENTBASE` p
 
 UNION ALL
 
@@ -1023,10 +1450,58 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2)),
     CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_invoiceforgp') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_invoiceforgp') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_invoiceforgp')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_invoiceforgp')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING),
-    CASE WHEN p.tmkn_paymentstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_invoiceforgp') || '|' || lower('tmkn_paymentstatus') || '|' || CAST(p.tmkn_paymentstatus AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_invoiceforgp')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_paymentstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_paymentstatus AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
@@ -1039,7 +1514,7 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_INVOICEFORGPBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_INVOICEFORGPBASE` p
 
 UNION ALL
 
@@ -1062,8 +1537,40 @@ SELECT
 
     CAST(NULL AS DECIMAL(18, 2)), CAST(NULL AS DECIMAL(18, 2)), CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_benefitpayment') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_benefitpayment') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_benefitpayment')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_benefitpayment')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING), CAST(NULL AS STRING),
@@ -1076,9 +1583,95 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_BENEFITPAYMENTBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_BENEFITPAYMENTBASE` p
+
+/*-- UNION ALL
 
 
+ -- ============================================================================
+ -- BRANCH 8: BC Support Payment (tmkn_businesscontinuitysupportpayment)
+ -- ============================================================================
+ SELECT
+     'BC_SUPPORT_PAYMENT', 'tmkn_businesscontinuitysupportpayment',
+
+     CAST(p.tmkn_businesscontinuitysupportpaymentid AS STRING),
+     p.tmkn_name,
+
+     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
+     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
+
+     p.createdon,
+     CAST(NULL AS TIMESTAMP), CAST(NULL AS TIMESTAMP), CAST(NULL AS TIMESTAMP),
+     CAST(NULL AS TIMESTAMP), CAST(NULL AS TIMESTAMP), CAST(NULL AS TIMESTAMP), CAST(NULL AS TIMESTAMP),
+
+     p.tmkn_totalamount,
+     CAST(NULL AS DECIMAL(18, 2)), CAST(NULL AS DECIMAL(18, 2)),
+
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_businesscontinuitysupportpayment')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_businesscontinuitysupportpayment')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
+     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
+     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_businesscontinuitysupportpayment')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_workflowstatus AS STRING)
+
+),
+     CAST(NULL AS STRING),
+
+     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
+     p.owneridname,
+
+     CAST(NULL AS BOOLEAN),
+	 CAST(NULL AS STRING),
+
+     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
+
+ FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`tmkn_businesscontinuitysupportpayment` p
+*/
 
 UNION ALL
 
@@ -1103,10 +1696,58 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2)),
     CAST(NULL AS DECIMAL(18, 2)), CAST(NULL AS DECIMAL(18, 2)),
 
-    CASE WHEN p.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_onlinepb') || '|' || lower('statecode') || '|' || CAST(p.statecode AS STRING)) END,
-    CASE WHEN p.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_onlinepb') || '|' || lower('statuscode') || '|' || CAST(p.statuscode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_onlinepb')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statecode AS STRING)
+
+),
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_onlinepb')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.statuscode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING),
-    CASE WHEN p.tmkn_paymentstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_onlinepb') || '|' || lower('tmkn_paymentstatus') || '|' || CAST(p.tmkn_paymentstatus AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_onlinepb')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_paymentstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(p.tmkn_paymentstatus AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING),
     CAST(NULL AS STRING),
@@ -1119,7 +1760,7 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_ONLINEPBBASE p
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_ONLINEPBBASE` p
 )
 SELECT
 
@@ -1279,7 +1920,7 @@ SELECT
     os1.report_date                                               AS report_date,
     os1.dbt_updated_at
 
-from payment_base_os1_source os1
+FROM payment_base_os1 os1
 
 
 UNION ALL
@@ -1438,7 +2079,7 @@ SELECT
     CAST(CURRENT_DATE AS DATE) AS report_date,
     os2.dbt_updated_at
 
-from payment_base_os2_source os2
+FROM  payment_base_os2 os2
 
 
 UNION ALL
@@ -1615,164 +2256,165 @@ SELECT
     CAST(CURRENT_DATE AS DATE)  AS report_date,
     mis.dbt_updated_at
 
-from payment_base_mis_source mis
+FROM payment_base_mis mis
 ),
 
 silver_layer AS (
 SELECT
-    payment_id,
-    payment_subtype,
-    source_table,
-    payment_no,
-    application_id,
-    iban_id,
-    payee_id,
-    payment_type_id,
-    payment_status_id,
-    payment_to_vendor_type_id,
-    erp_batch_id,
-    erp_invoice_id,
-    payment_request_type_id,
-    support_category_id,
-    training_provider_id,
-    vendor_id,
-    approved_by_user_id,
-    payment_auditor_user_id,
-    sent_back_by_user_id,
-    correction_team_user_id,
-    approver_user_id,
-    customer_user_id,
-    monitoring_approver_user_id,
-    workflow_status,
-    payment_share,
-    payee,
-    is_fawateer,
-    payment_request_type,
-    program_name,
-    program_type_name,
-    app_status,
-    app_ref,
-    total_amount,
-    total_item_cost,
-    total_vat_amount,
-    total_items_tamkeen_share,
-    total_items_applicant_share_with_vat,
-    created_on,
-    submitted_to_customer_on,
-    submitted_on,
-    approved_on,
-    sent_back_to_customer_on,
-    updated_on,
-    due_date,
-    erp_batch,
-    erp_invoice,
-    training_provider_cr,
-    training_provider_name,
-    vendor_cr,
-    vendor_name,
-    user_accountant,
-    user_payment_auditor,
-    sent_back_to_customer_by,
-    user_correction,
-    approved_by,
-    customer_name,
-    claimed_by_vendor,
-    is_need_attention,
-    submission_count,
-    training_payment_type,
-    extract_date,
-    payment_request_reference,
-    application_reference,
-    payment_request_status,
-    created_on_payment_request,
-    submitted_on_payment_request,
-    paid_on,
-    payment_type,
-    iban,
-    iban_status,
-    payee_type,
-    total_cost_value,
-    tamkeen_share_value,
-    customer_share_value,
-    fawateer_reference,
-    origin_system,
-    created_by,
-    updatedon,
-    createdon,
-    payment_name,
-    parent_application_id,
-    parent_application_name,
-    enterprise_application_id,
-    company_id,
-    aub_payment_id,
-    aub_payment_name,
-    gp_invoice_id,
-    gp_invoice_name,
-    submitted_for_approval_on,
-    validated_on,
-    submitted_to_finance_on,
-    approved_by_fc_on,
-    checked_by_accountant_on,
-    receipt_amount,
-    verified_amount,
-    state,
-    status_reason,
-    payment_processed,
-    sent_back_before,
-    payment_status,
-    payable_to,
-    violation_status,
-    has_committed_to_gp,
-    finance_approval,
-    is_flagged,
-    accountant_name,
-    verifying_user,
-    fc_user,
-    owner_name,
-    is_migrated,
-    payment_support_id,
-    application_support_id,
-    individual_name,
-    individual_cpr,
-    enterprise_cr_license,
-    enterprise_cr_status,
-    enterprise_commercial_name_en,
-    training_provider_location,
-    support_type,
-    total_amount_tamkeen_share,
-    tamkeen_share_support,
-    customer_share_support,
-    sio_deductions,
-    attendance_deductions,
-    other_deductions,
-    total_deductions,
-    process_type,
-    commercial_name_ar,
-    commercial_name_en,
-    closed,
-    addresstown,
-    application_createdon,
-    customertypeid,
-    registrationdate,
-    application_status,
-    amendmentrequestid,
-    role_name,
-    activity_label,
-    activity_definition_id,
-    owner,
-    payment_request_id,
-    total_months_experience,
-    userid,
-    name,
-    source_system_name,
-    is_deleted,
-    report_date,
-    dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.payment_base
+    `payment_id`,
+    `payment_subtype`,
+    `source_table`,
+    `payment_no`,
+    `application_id`,
+    `iban_id`,
+    `payee_id`,
+    `payment_type_id`,
+    `payment_status_id`,
+    `payment_to_vendor_type_id`,
+    `erp_batch_id`,
+    `erp_invoice_id`,
+    `payment_request_type_id`,
+    `support_category_id`,
+    `training_provider_id`,
+    `vendor_id`,
+    `approved_by_user_id`,
+    `payment_auditor_user_id`,
+    `sent_back_by_user_id`,
+    `correction_team_user_id`,
+    `approver_user_id`,
+    `customer_user_id`,
+    `monitoring_approver_user_id`,
+    `workflow_status`,
+    `payment_share`,
+    `payee`,
+    `is_fawateer`,
+    `payment_request_type`,
+    `program_name`,
+    `program_type_name`,
+    `app_status`,
+    `app_ref`,
+    `total_amount`,
+    `total_item_cost`,
+    `total_vat_amount`,
+    `total_items_tamkeen_share`,
+    `total_items_applicant_share_with_vat`,
+    `created_on`,
+    `submitted_to_customer_on`,
+    `submitted_on`,
+    `approved_on`,
+    `sent_back_to_customer_on`,
+    `updated_on`,
+    `due_date`,
+    `erp_batch`,
+    `erp_invoice`,
+    `training_provider_cr`,
+    `training_provider_name`,
+    `vendor_cr`,
+    `vendor_name`,
+    `user_accountant`,
+    `user_payment_auditor`,
+    `sent_back_to_customer_by`,
+    `user_correction`,
+    `approved_by`,
+    `customer_name`,
+    `claimed_by_vendor`,
+    `is_need_attention`,
+    `submission_count`,
+    `training_payment_type`,
+    `extract_date`,
+    `payment_request_reference`,
+    `application_reference`,
+    `payment_request_status`,
+    `created_on_payment_request`,
+    `submitted_on_payment_request`,
+    `paid_on`,
+    `payment_type`,
+    `iban`,
+    `iban_status`,
+    `payee_type`,
+    `total_cost_value`,
+    `tamkeen_share_value`,
+    `customer_share_value`,
+    `fawateer_reference`,
+    `origin_system`,
+    `created_by`,
+    `updatedon`,
+    `createdon`,
+    `payment_name`,
+    `parent_application_id`,
+    `parent_application_name`,
+    `enterprise_application_id`,
+    `company_id`,
+    `aub_payment_id`,
+    `aub_payment_name`,
+    `gp_invoice_id`,
+    `gp_invoice_name`,
+    `submitted_for_approval_on`,
+    `validated_on`,
+    `submitted_to_finance_on`,
+    `approved_by_fc_on`,
+    `checked_by_accountant_on`,
+    `receipt_amount`,
+    `verified_amount`,
+    `state`,
+    `status_reason`,
+    `payment_processed`,
+    `sent_back_before`,
+    `payment_status`,
+    `payable_to`,
+    `violation_status`,
+    `has_committed_to_gp`,
+    `finance_approval`,
+    `is_flagged`,
+    `accountant_name`,
+    `verifying_user`,
+    `fc_user`,
+    `owner_name`,
+    `is_migrated`,
+    `payment_support_id`,
+    `application_support_id`,
+    `individual_name`,
+    `individual_cpr`,
+    `enterprise_cr_license`,
+    `enterprise_cr_status`,
+    `enterprise_commercial_name_en`,
+    `training_provider_location`,
+    `support_type`,
+    `total_amount_tamkeen_share`,
+    `tamkeen_share_support`,
+    `customer_share_support`,
+    `sio_deductions`,
+    `attendance_deductions`,
+    `other_deductions`,
+    `total_deductions`,
+    `process_type`,
+    `commercial_name_ar`,
+    `commercial_name_en`,
+    `closed`,
+    `addresstown`,
+    `application_createdon`,
+    `customertypeid`,
+    `registrationdate`,
+    `application_status`,
+    `amendmentrequestid`,
+    `role_name`,
+    `activity_label`,
+    `activity_definition_id`,
+    `owner`,
+    `payment_request_id`,
+    `total_months_experience`,
+    `userid`,
+    `name`,
+    `source_system_name`,
+    `is_deleted`,
+    `report_date`,
+    `dbt_updated_at`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`payment_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'payment_id'),
         (2, 'payment_subtype'),
         (3, 'source_table'),
@@ -1921,10 +2563,12 @@ bronze_columns(column_position, column_name) AS (
         (146, 'is_deleted'),
         (147, 'report_date'),
         (148, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'payment_id'),
         (2, 'payment_subtype'),
         (3, 'source_table'),
@@ -2073,6 +2717,7 @@ silver_columns(column_position, column_name) AS (
         (146, 'is_deleted'),
         (147, 'report_date'),
         (148, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (
@@ -2381,25 +3026,656 @@ silver_normalized AS (
     FROM silver_layer
 ),
 
-bronze_minus_silver AS (
-    SELECT * FROM bronze_normalized
-    EXCEPT ALL
-    SELECT * FROM silver_normalized
+combined_normalized AS (
+    SELECT
+        'bronze' AS comparison_source,
+        `payment_id`,
+        `payment_subtype`,
+        `source_table`,
+        `payment_no`,
+        `application_id`,
+        `iban_id`,
+        `payee_id`,
+        `payment_type_id`,
+        `payment_status_id`,
+        `payment_to_vendor_type_id`,
+        `erp_batch_id`,
+        `erp_invoice_id`,
+        `payment_request_type_id`,
+        `support_category_id`,
+        `training_provider_id`,
+        `vendor_id`,
+        `approved_by_user_id`,
+        `payment_auditor_user_id`,
+        `sent_back_by_user_id`,
+        `correction_team_user_id`,
+        `approver_user_id`,
+        `customer_user_id`,
+        `monitoring_approver_user_id`,
+        `workflow_status`,
+        `payment_share`,
+        `payee`,
+        `is_fawateer`,
+        `payment_request_type`,
+        `program_name`,
+        `program_type_name`,
+        `app_status`,
+        `app_ref`,
+        `total_amount`,
+        `total_item_cost`,
+        `total_vat_amount`,
+        `total_items_tamkeen_share`,
+        `total_items_applicant_share_with_vat`,
+        `created_on`,
+        `submitted_to_customer_on`,
+        `submitted_on`,
+        `approved_on`,
+        `sent_back_to_customer_on`,
+        `updated_on`,
+        `due_date`,
+        `erp_batch`,
+        `erp_invoice`,
+        `training_provider_cr`,
+        `training_provider_name`,
+        `vendor_cr`,
+        `vendor_name`,
+        `user_accountant`,
+        `user_payment_auditor`,
+        `sent_back_to_customer_by`,
+        `user_correction`,
+        `approved_by`,
+        `customer_name`,
+        `claimed_by_vendor`,
+        `is_need_attention`,
+        `submission_count`,
+        `training_payment_type`,
+        `extract_date`,
+        `payment_request_reference`,
+        `application_reference`,
+        `payment_request_status`,
+        `created_on_payment_request`,
+        `submitted_on_payment_request`,
+        `paid_on`,
+        `payment_type`,
+        `iban`,
+        `iban_status`,
+        `payee_type`,
+        `total_cost_value`,
+        `tamkeen_share_value`,
+        `customer_share_value`,
+        `fawateer_reference`,
+        `origin_system`,
+        `created_by`,
+        `updatedon`,
+        `createdon`,
+        `payment_name`,
+        `parent_application_id`,
+        `parent_application_name`,
+        `enterprise_application_id`,
+        `company_id`,
+        `aub_payment_id`,
+        `aub_payment_name`,
+        `gp_invoice_id`,
+        `gp_invoice_name`,
+        `submitted_for_approval_on`,
+        `validated_on`,
+        `submitted_to_finance_on`,
+        `approved_by_fc_on`,
+        `checked_by_accountant_on`,
+        `receipt_amount`,
+        `verified_amount`,
+        `state`,
+        `status_reason`,
+        `payment_processed`,
+        `sent_back_before`,
+        `payment_status`,
+        `payable_to`,
+        `violation_status`,
+        `has_committed_to_gp`,
+        `finance_approval`,
+        `is_flagged`,
+        `accountant_name`,
+        `verifying_user`,
+        `fc_user`,
+        `owner_name`,
+        `is_migrated`,
+        `payment_support_id`,
+        `application_support_id`,
+        `individual_name`,
+        `individual_cpr`,
+        `enterprise_cr_license`,
+        `enterprise_cr_status`,
+        `enterprise_commercial_name_en`,
+        `training_provider_location`,
+        `support_type`,
+        `total_amount_tamkeen_share`,
+        `tamkeen_share_support`,
+        `customer_share_support`,
+        `sio_deductions`,
+        `attendance_deductions`,
+        `other_deductions`,
+        `total_deductions`,
+        `process_type`,
+        `commercial_name_ar`,
+        `commercial_name_en`,
+        `closed`,
+        `addresstown`,
+        `application_createdon`,
+        `customertypeid`,
+        `registrationdate`,
+        `application_status`,
+        `amendmentrequestid`,
+        `role_name`,
+        `activity_label`,
+        `activity_definition_id`,
+        `owner`,
+        `payment_request_id`,
+        `total_months_experience`,
+        `userid`,
+        `name`,
+        `source_system_name`,
+        `is_deleted`,
+        `report_date`,
+        `dbt_updated_at`
+    FROM bronze_normalized
+    UNION ALL
+    SELECT
+        'silver' AS comparison_source,
+        `payment_id`,
+        `payment_subtype`,
+        `source_table`,
+        `payment_no`,
+        `application_id`,
+        `iban_id`,
+        `payee_id`,
+        `payment_type_id`,
+        `payment_status_id`,
+        `payment_to_vendor_type_id`,
+        `erp_batch_id`,
+        `erp_invoice_id`,
+        `payment_request_type_id`,
+        `support_category_id`,
+        `training_provider_id`,
+        `vendor_id`,
+        `approved_by_user_id`,
+        `payment_auditor_user_id`,
+        `sent_back_by_user_id`,
+        `correction_team_user_id`,
+        `approver_user_id`,
+        `customer_user_id`,
+        `monitoring_approver_user_id`,
+        `workflow_status`,
+        `payment_share`,
+        `payee`,
+        `is_fawateer`,
+        `payment_request_type`,
+        `program_name`,
+        `program_type_name`,
+        `app_status`,
+        `app_ref`,
+        `total_amount`,
+        `total_item_cost`,
+        `total_vat_amount`,
+        `total_items_tamkeen_share`,
+        `total_items_applicant_share_with_vat`,
+        `created_on`,
+        `submitted_to_customer_on`,
+        `submitted_on`,
+        `approved_on`,
+        `sent_back_to_customer_on`,
+        `updated_on`,
+        `due_date`,
+        `erp_batch`,
+        `erp_invoice`,
+        `training_provider_cr`,
+        `training_provider_name`,
+        `vendor_cr`,
+        `vendor_name`,
+        `user_accountant`,
+        `user_payment_auditor`,
+        `sent_back_to_customer_by`,
+        `user_correction`,
+        `approved_by`,
+        `customer_name`,
+        `claimed_by_vendor`,
+        `is_need_attention`,
+        `submission_count`,
+        `training_payment_type`,
+        `extract_date`,
+        `payment_request_reference`,
+        `application_reference`,
+        `payment_request_status`,
+        `created_on_payment_request`,
+        `submitted_on_payment_request`,
+        `paid_on`,
+        `payment_type`,
+        `iban`,
+        `iban_status`,
+        `payee_type`,
+        `total_cost_value`,
+        `tamkeen_share_value`,
+        `customer_share_value`,
+        `fawateer_reference`,
+        `origin_system`,
+        `created_by`,
+        `updatedon`,
+        `createdon`,
+        `payment_name`,
+        `parent_application_id`,
+        `parent_application_name`,
+        `enterprise_application_id`,
+        `company_id`,
+        `aub_payment_id`,
+        `aub_payment_name`,
+        `gp_invoice_id`,
+        `gp_invoice_name`,
+        `submitted_for_approval_on`,
+        `validated_on`,
+        `submitted_to_finance_on`,
+        `approved_by_fc_on`,
+        `checked_by_accountant_on`,
+        `receipt_amount`,
+        `verified_amount`,
+        `state`,
+        `status_reason`,
+        `payment_processed`,
+        `sent_back_before`,
+        `payment_status`,
+        `payable_to`,
+        `violation_status`,
+        `has_committed_to_gp`,
+        `finance_approval`,
+        `is_flagged`,
+        `accountant_name`,
+        `verifying_user`,
+        `fc_user`,
+        `owner_name`,
+        `is_migrated`,
+        `payment_support_id`,
+        `application_support_id`,
+        `individual_name`,
+        `individual_cpr`,
+        `enterprise_cr_license`,
+        `enterprise_cr_status`,
+        `enterprise_commercial_name_en`,
+        `training_provider_location`,
+        `support_type`,
+        `total_amount_tamkeen_share`,
+        `tamkeen_share_support`,
+        `customer_share_support`,
+        `sio_deductions`,
+        `attendance_deductions`,
+        `other_deductions`,
+        `total_deductions`,
+        `process_type`,
+        `commercial_name_ar`,
+        `commercial_name_en`,
+        `closed`,
+        `addresstown`,
+        `application_createdon`,
+        `customertypeid`,
+        `registrationdate`,
+        `application_status`,
+        `amendmentrequestid`,
+        `role_name`,
+        `activity_label`,
+        `activity_definition_id`,
+        `owner`,
+        `payment_request_id`,
+        `total_months_experience`,
+        `userid`,
+        `name`,
+        `source_system_name`,
+        `is_deleted`,
+        `report_date`,
+        `dbt_updated_at`
+    FROM silver_normalized
 ),
 
-silver_minus_bronze AS (
-    SELECT * FROM silver_normalized
-    EXCEPT ALL
-    SELECT * FROM bronze_normalized
+grouped_comparison AS (
+    SELECT
+        `payment_id`,
+        `payment_subtype`,
+        `source_table`,
+        `payment_no`,
+        `application_id`,
+        `iban_id`,
+        `payee_id`,
+        `payment_type_id`,
+        `payment_status_id`,
+        `payment_to_vendor_type_id`,
+        `erp_batch_id`,
+        `erp_invoice_id`,
+        `payment_request_type_id`,
+        `support_category_id`,
+        `training_provider_id`,
+        `vendor_id`,
+        `approved_by_user_id`,
+        `payment_auditor_user_id`,
+        `sent_back_by_user_id`,
+        `correction_team_user_id`,
+        `approver_user_id`,
+        `customer_user_id`,
+        `monitoring_approver_user_id`,
+        `workflow_status`,
+        `payment_share`,
+        `payee`,
+        `is_fawateer`,
+        `payment_request_type`,
+        `program_name`,
+        `program_type_name`,
+        `app_status`,
+        `app_ref`,
+        `total_amount`,
+        `total_item_cost`,
+        `total_vat_amount`,
+        `total_items_tamkeen_share`,
+        `total_items_applicant_share_with_vat`,
+        `created_on`,
+        `submitted_to_customer_on`,
+        `submitted_on`,
+        `approved_on`,
+        `sent_back_to_customer_on`,
+        `updated_on`,
+        `due_date`,
+        `erp_batch`,
+        `erp_invoice`,
+        `training_provider_cr`,
+        `training_provider_name`,
+        `vendor_cr`,
+        `vendor_name`,
+        `user_accountant`,
+        `user_payment_auditor`,
+        `sent_back_to_customer_by`,
+        `user_correction`,
+        `approved_by`,
+        `customer_name`,
+        `claimed_by_vendor`,
+        `is_need_attention`,
+        `submission_count`,
+        `training_payment_type`,
+        `extract_date`,
+        `payment_request_reference`,
+        `application_reference`,
+        `payment_request_status`,
+        `created_on_payment_request`,
+        `submitted_on_payment_request`,
+        `paid_on`,
+        `payment_type`,
+        `iban`,
+        `iban_status`,
+        `payee_type`,
+        `total_cost_value`,
+        `tamkeen_share_value`,
+        `customer_share_value`,
+        `fawateer_reference`,
+        `origin_system`,
+        `created_by`,
+        `updatedon`,
+        `createdon`,
+        `payment_name`,
+        `parent_application_id`,
+        `parent_application_name`,
+        `enterprise_application_id`,
+        `company_id`,
+        `aub_payment_id`,
+        `aub_payment_name`,
+        `gp_invoice_id`,
+        `gp_invoice_name`,
+        `submitted_for_approval_on`,
+        `validated_on`,
+        `submitted_to_finance_on`,
+        `approved_by_fc_on`,
+        `checked_by_accountant_on`,
+        `receipt_amount`,
+        `verified_amount`,
+        `state`,
+        `status_reason`,
+        `payment_processed`,
+        `sent_back_before`,
+        `payment_status`,
+        `payable_to`,
+        `violation_status`,
+        `has_committed_to_gp`,
+        `finance_approval`,
+        `is_flagged`,
+        `accountant_name`,
+        `verifying_user`,
+        `fc_user`,
+        `owner_name`,
+        `is_migrated`,
+        `payment_support_id`,
+        `application_support_id`,
+        `individual_name`,
+        `individual_cpr`,
+        `enterprise_cr_license`,
+        `enterprise_cr_status`,
+        `enterprise_commercial_name_en`,
+        `training_provider_location`,
+        `support_type`,
+        `total_amount_tamkeen_share`,
+        `tamkeen_share_support`,
+        `customer_share_support`,
+        `sio_deductions`,
+        `attendance_deductions`,
+        `other_deductions`,
+        `total_deductions`,
+        `process_type`,
+        `commercial_name_ar`,
+        `commercial_name_en`,
+        `closed`,
+        `addresstown`,
+        `application_createdon`,
+        `customertypeid`,
+        `registrationdate`,
+        `application_status`,
+        `amendmentrequestid`,
+        `role_name`,
+        `activity_label`,
+        `activity_definition_id`,
+        `owner`,
+        `payment_request_id`,
+        `total_months_experience`,
+        `userid`,
+        `name`,
+        `source_system_name`,
+        `is_deleted`,
+        `report_date`,
+        `dbt_updated_at`,
+        COUNT_IF(comparison_source = 'bronze') AS bronze_row_count,
+        COUNT_IF(comparison_source = 'silver') AS silver_row_count
+    FROM combined_normalized
+    GROUP BY
+        `payment_id`,
+        `payment_subtype`,
+        `source_table`,
+        `payment_no`,
+        `application_id`,
+        `iban_id`,
+        `payee_id`,
+        `payment_type_id`,
+        `payment_status_id`,
+        `payment_to_vendor_type_id`,
+        `erp_batch_id`,
+        `erp_invoice_id`,
+        `payment_request_type_id`,
+        `support_category_id`,
+        `training_provider_id`,
+        `vendor_id`,
+        `approved_by_user_id`,
+        `payment_auditor_user_id`,
+        `sent_back_by_user_id`,
+        `correction_team_user_id`,
+        `approver_user_id`,
+        `customer_user_id`,
+        `monitoring_approver_user_id`,
+        `workflow_status`,
+        `payment_share`,
+        `payee`,
+        `is_fawateer`,
+        `payment_request_type`,
+        `program_name`,
+        `program_type_name`,
+        `app_status`,
+        `app_ref`,
+        `total_amount`,
+        `total_item_cost`,
+        `total_vat_amount`,
+        `total_items_tamkeen_share`,
+        `total_items_applicant_share_with_vat`,
+        `created_on`,
+        `submitted_to_customer_on`,
+        `submitted_on`,
+        `approved_on`,
+        `sent_back_to_customer_on`,
+        `updated_on`,
+        `due_date`,
+        `erp_batch`,
+        `erp_invoice`,
+        `training_provider_cr`,
+        `training_provider_name`,
+        `vendor_cr`,
+        `vendor_name`,
+        `user_accountant`,
+        `user_payment_auditor`,
+        `sent_back_to_customer_by`,
+        `user_correction`,
+        `approved_by`,
+        `customer_name`,
+        `claimed_by_vendor`,
+        `is_need_attention`,
+        `submission_count`,
+        `training_payment_type`,
+        `extract_date`,
+        `payment_request_reference`,
+        `application_reference`,
+        `payment_request_status`,
+        `created_on_payment_request`,
+        `submitted_on_payment_request`,
+        `paid_on`,
+        `payment_type`,
+        `iban`,
+        `iban_status`,
+        `payee_type`,
+        `total_cost_value`,
+        `tamkeen_share_value`,
+        `customer_share_value`,
+        `fawateer_reference`,
+        `origin_system`,
+        `created_by`,
+        `updatedon`,
+        `createdon`,
+        `payment_name`,
+        `parent_application_id`,
+        `parent_application_name`,
+        `enterprise_application_id`,
+        `company_id`,
+        `aub_payment_id`,
+        `aub_payment_name`,
+        `gp_invoice_id`,
+        `gp_invoice_name`,
+        `submitted_for_approval_on`,
+        `validated_on`,
+        `submitted_to_finance_on`,
+        `approved_by_fc_on`,
+        `checked_by_accountant_on`,
+        `receipt_amount`,
+        `verified_amount`,
+        `state`,
+        `status_reason`,
+        `payment_processed`,
+        `sent_back_before`,
+        `payment_status`,
+        `payable_to`,
+        `violation_status`,
+        `has_committed_to_gp`,
+        `finance_approval`,
+        `is_flagged`,
+        `accountant_name`,
+        `verifying_user`,
+        `fc_user`,
+        `owner_name`,
+        `is_migrated`,
+        `payment_support_id`,
+        `application_support_id`,
+        `individual_name`,
+        `individual_cpr`,
+        `enterprise_cr_license`,
+        `enterprise_cr_status`,
+        `enterprise_commercial_name_en`,
+        `training_provider_location`,
+        `support_type`,
+        `total_amount_tamkeen_share`,
+        `tamkeen_share_support`,
+        `customer_share_support`,
+        `sio_deductions`,
+        `attendance_deductions`,
+        `other_deductions`,
+        `total_deductions`,
+        `process_type`,
+        `commercial_name_ar`,
+        `commercial_name_en`,
+        `closed`,
+        `addresstown`,
+        `application_createdon`,
+        `customertypeid`,
+        `registrationdate`,
+        `application_status`,
+        `amendmentrequestid`,
+        `role_name`,
+        `activity_label`,
+        `activity_definition_id`,
+        `owner`,
+        `payment_request_id`,
+        `total_months_experience`,
+        `userid`,
+        `name`,
+        `source_system_name`,
+        `is_deleted`,
+        `report_date`,
+        `dbt_updated_at`
 ),
 
-validation_results AS (
+comparison_summary AS (
+    SELECT
+        COALESCE(SUM(bronze_row_count), 0) AS bronze_total_count,
+        COALESCE(SUM(silver_row_count), 0) AS silver_total_count,
+        COALESCE(SUM(GREATEST(COALESCE(bronze_row_count, 0) - COALESCE(silver_row_count, 0), 0)), 0) AS bronze_minus_silver_count,
+        COALESCE(SUM(GREATEST(COALESCE(silver_row_count, 0) - COALESCE(bronze_row_count, 0), 0)), 0) AS silver_minus_bronze_count
+    FROM grouped_comparison
+),
+summary_validation AS (
     SELECT
         'payment_base' AS table_name,
-        'record_count' AS validation_point,
-        CAST((SELECT COUNT(*) FROM bronze_layer) AS BIGINT) AS bronze_layer_count,
-        CAST((SELECT COUNT(*) FROM silver_layer) AS BIGINT) AS silver_layer_count,
-        CASE WHEN (SELECT COUNT(*) FROM bronze_layer) = (SELECT COUNT(*) FROM silver_layer) THEN 'PASS' ELSE 'FAIL' END AS validation_status
+        validation_point,
+        bronze_layer_count,
+        silver_layer_count,
+        validation_status
+    FROM comparison_summary c
+    LATERAL VIEW stack(
+        3,
+        'record_count',
+        CAST(c.bronze_total_count AS BIGINT),
+        CAST(c.silver_total_count AS BIGINT),
+        CASE WHEN c.bronze_total_count = c.silver_total_count THEN 'PASS' ELSE 'FAIL' END,
+        'mismatching_rows_bronze_minus_silver',
+        CAST(c.bronze_minus_silver_count AS BIGINT),
+        CAST(0 AS BIGINT),
+        CASE WHEN c.bronze_minus_silver_count = 0 THEN 'PASS' ELSE 'FAIL' END,
+        'mismatching_rows_silver_minus_bronze',
+        CAST(0 AS BIGINT),
+        CAST(c.silver_minus_bronze_count AS BIGINT),
+        CASE WHEN c.silver_minus_bronze_count = 0 THEN 'PASS' ELSE 'FAIL' END
+    ) t AS validation_point, bronze_layer_count, silver_layer_count, validation_status
+),
+validation_results AS (
+    SELECT
+        table_name,
+        validation_point,
+        bronze_layer_count,
+        silver_layer_count,
+        validation_status
+    FROM summary_validation
 
     UNION ALL
 
@@ -2432,26 +3708,10 @@ validation_results AS (
              AND b.column_name = s.column_name
             WHERE b.column_name IS NULL OR s.column_name IS NULL
         ) THEN 'PASS' ELSE 'FAIL' END AS validation_status
-
-    UNION ALL
-
-    SELECT
-        'payment_base' AS table_name,
-        'mismatching_rows_bronze_minus_silver' AS validation_point,
-        CAST((SELECT COUNT(*) FROM bronze_minus_silver) AS BIGINT) AS bronze_layer_count,
-        CAST(0 AS BIGINT) AS silver_layer_count,
-        CASE WHEN (SELECT COUNT(*) FROM bronze_minus_silver) = 0 THEN 'PASS' ELSE 'FAIL' END AS validation_status
-
-    UNION ALL
-
-    SELECT
-        'payment_base' AS table_name,
-        'mismatching_rows_silver_minus_bronze' AS validation_point,
-        CAST(0 AS BIGINT) AS bronze_layer_count,
-        CAST((SELECT COUNT(*) FROM silver_minus_bronze) AS BIGINT) AS silver_layer_count,
-        CASE WHEN (SELECT COUNT(*) FROM silver_minus_bronze) = 0 THEN 'PASS' ELSE 'FAIL' END AS validation_status
 )
-
 SELECT *
 FROM validation_results
 ORDER BY validation_point;
+
+
+

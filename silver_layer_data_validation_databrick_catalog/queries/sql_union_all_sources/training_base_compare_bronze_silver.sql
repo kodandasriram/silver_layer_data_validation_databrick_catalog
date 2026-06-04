@@ -1,13 +1,74 @@
+-- Compare bronze-layer query output with silver-layer table output for training_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\training_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\training_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for training_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: training_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for training_base.
+Column order and typed NULL placeholders follow dbt model: training_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH training_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
 /*
  =================================================================================================
+
+Name        : TRAINING_UNIFIED_BASE
+Description : Cross-system Silver view of training data, combining OS2 application
+              supports and MIS training enrollments into a single thin base table.
+
+              Built as a UNION ALL of:
+                - TRAINING_SUPPORT_BASE_OS2     (grain: application support, ENT+IND)
+                - TRAINING_ENROLLMENT_BASE_MIS  (grain: training enrollment, ENT-driven)
+
+              Exposes ONLY the conceptually-shared business fields. System-specific
+              columns (OS2 amendment_id, MIS status-history milestones, MIS individual
+              demographics, etc.) remain in the source-specific base tables. Use those
+              when you need the full per-source detail; use this when you need a
+              source-agnostic training view.
+
+              IMPORTANT â€” grain mismatch:
+              OS2 rows are per-application-support; MIS rows are per-enrollment. An
+              OS2 application support may correspond to 0, 1, or N MIS enrollments.
+              Row counts in this unified view are NOT directly comparable across
+              source_system_name values; aggregate accordingly.
+
+              Source-system distinguishing columns:
+                source_system_name : 'NEO2' (OS2) or 'MIS'
+                source_grain       : 'application_support' or 'training_enrollment'
+                profile_type       : 'ENT' or 'IND' (MIS is always 'ENT'-driven)
+
+Source Models : training_support_base_os2
+                training_enrollment_base_mis
+
+Target Table : TRAINING_UNIFIED_BASE
+Load Type    : Full Load
+Materialized : table
+Format       : PARQUET
+Tags         : silver, training, unified, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author     | Description
+--------------------------------------------------------------
+1.0     | 2026-05-18 |       | Initial version unifying OS2 + MIS training Silver models
+
+================================================================================================= 
+*/
+
+
+
+WITH
+    training_base_os2 AS (
+/* =================================================================================================
 
 Name        : TRAINING_SUPPORT_BASE_OS2
 Description : Unified Silver model for OS2 training-related application supports.
@@ -72,8 +133,8 @@ Notes:
 - Two UNION ALL branches preserved per source models:
     Branch 1: direct application supports (appsup -> app)
     Branch 2: amendment supports (appsup -> amendreq -> app)
-================================================================================================= 
-*/
+================================================================================================= */
+
 WITH final_base AS (
 
     -- =================================================================
@@ -92,22 +153,22 @@ WITH final_base AS (
 
         CASE
             WHEN app.submittedon = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.submittedon + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.submittedon + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS submitted_on,
 
         CASE
             WHEN app.approvedon = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.approvedon + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.approvedon + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS approved_on,
 
         CASE
             WHEN app.starton = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.starton + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.starton + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS contract_start_date,
 
         CASE
             WHEN app.endon = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.endon + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.endon + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS contract_end_date,
 
         -- approval_letter_accepted_on: source column commented out in both upstream
@@ -132,17 +193,17 @@ WITH final_base AS (
 
         CASE
             WHEN tra.trainingstartdate = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(tra.trainingstartdate + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(tra.trainingstartdate + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS training_start_date,
 
         CASE
             WHEN tra.trainingenddate = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(tra.trainingenddate + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(tra.trainingenddate + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS training_end_date,
 
         CASE
             WHEN tra.trainingassessmentdate = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(tra.trainingassessmentdate + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(tra.trainingassessmentdate + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS training_assessment_date,
 
         trainingprogram.inputcapamount                                      AS certification_cap_amount_bhd,
@@ -166,67 +227,67 @@ WITH final_base AS (
         -- commented out in both upstream models; preserved as NULL
         CAST(NULL AS STRING)                                               AS effective_tamkeen_share_amount_bhd
 
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT appsup
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORT` appsup
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION app
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION4` app
         ON app.id = appsup.applicationid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENT amt
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENT` amt
         ON amt.applicationid = app.id
        AND app.isactive = TRUE
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER appcus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATIONCUSTOMER` appcus
         ON appcus.applicationid = app.id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE cusprof
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE` cusprof
         ON cusprof.id = appcus.customerprofileid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER cus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` cus
         ON cus.id = cusprof.customerid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAINING tra
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAINING` tra
         ON tra.applicationsupportid = appsup.id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_CERTIFICATION tracertif
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_CERTIFICATION` tracertif
         ON tracertif.id = tra.certificationid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_R9T_TRAININGPROGRAM trainingprogram
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_R9T_TRAININGPROGRAM` trainingprogram
         ON trainingprogram.id = tracertif.trainingprogramid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_TRAININGTYPE trainingtype
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_TRAININGTYPE` trainingtype
         ON trainingtype.`order` = trainingprogram.trainingtypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL cusindapp
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL` cusindapp
         ON cusindapp.id = appsup.individualid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_GUR_AUTHORIZEDENTITIES authtra
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_GUR_AUTHORIZEDENTITIES` authtra
         ON authtra.id = trainingprogram.authorizedproviderid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION progver
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION` progver
         ON progver.id = app.programversionid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM program
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAM` program
         ON program.id = progver.programid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAININGPAYMENTTYPE paytype
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAININGPAYMENTTYPE` paytype
         ON paytype.code = tra.trainingpaymenttypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAININGPAYEE payee
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAININGPAYEE` payee
         ON payee.code = tra.payeetypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS app_sta
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` app_sta
         ON app_sta.code = app.applicationstatusid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORTSTATUS appsuppwfs
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORTSTATUS` appsuppwfs
         ON appsuppwfs.code = appsup.applicationsupportstatusid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_PROVIDERTYPE providertype
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_PROVIDERTYPE` providertype
         ON providertype.id = appsup.providertypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENTSTATUS assessmentstatus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENTSTATUS` assessmentstatus
         ON assessmentstatus.code = amt.assessmentstatusid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER cusapp
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` cusapp
         ON cusapp.id = appsup.individualid
 
     WHERE program.profiletypeid IN ('ENT', 'IND')
@@ -258,22 +319,22 @@ WITH final_base AS (
 
         CASE
             WHEN app.submittedon = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.submittedon + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.submittedon + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS submitted_on,
 
         CASE
             WHEN app.approvedon = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.approvedon + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.approvedon + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS approved_on,
 
         CASE
             WHEN app.starton = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.starton + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.starton + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS contract_start_date,
 
         CASE
             WHEN app.endon = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(app.endon + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(app.endon + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS contract_end_date,
 
         CAST(NULL AS STRING)                                               AS approval_letter_accepted_on,
@@ -296,17 +357,17 @@ WITH final_base AS (
 
         CASE
             WHEN tra.trainingstartdate = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(tra.trainingstartdate + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(tra.trainingstartdate + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS training_start_date,
 
         CASE
             WHEN tra.trainingenddate = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(tra.trainingenddate + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(tra.trainingenddate + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS training_end_date,
 
         CASE
             WHEN tra.trainingassessmentdate = TIMESTAMP '1900-01-01 00:00:00' THEN NULL
-            ELSE CAST(tra.trainingassessmentdate + INTERVAL '3' HOUR AS DATE)
+            ELSE CAST(tra.trainingassessmentdate + INTERVAL 3 HOURS AS DATE)
         END                                                                 AS training_assessment_date,
 
         trainingprogram.inputcapamount                                      AS certification_cap_amount_bhd,
@@ -327,70 +388,70 @@ WITH final_base AS (
         tra.itemvatamt                                                      AS total_vat_amount_bhd,
         CAST(NULL AS STRING)                                               AS effective_tamkeen_share_amount_bhd
 
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT appsup
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORT` appsup
 
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_AMENDMENTREQUEST amendreq
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_AMENDMENTREQUEST4` amendreq
         ON amendreq.id = appsup.amendmentrequestid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENT amt
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENT` amt
         ON amt.amendmentrequestid = amendreq.id
 
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION app
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` app
         ON app.id = amendreq.applicationid
        AND app.isactive = TRUE
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER appcus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATIONCUSTOMER` appcus
         ON appcus.applicationid = app.id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE cusprof
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE` cusprof
         ON cusprof.id = appcus.customerprofileid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER cus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` cus
         ON cus.id = cusprof.customerid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAINING tra
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAINING` tra
         ON tra.applicationsupportid = appsup.id
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_CERTIFICATION tracertif
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_CERTIFICATION` tracertif
         ON tracertif.id = tra.certificationid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_R9T_TRAININGPROGRAM trainingprogram
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_R9T_TRAININGPROGRAM` trainingprogram
         ON trainingprogram.id = tracertif.trainingprogramid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_TRAININGTYPE trainingtype
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_TRAININGTYPE` trainingtype
         ON trainingtype.`order` = trainingprogram.trainingtypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL cusindapp
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL` cusindapp
         ON cusindapp.id = appsup.individualid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_GUR_AUTHORIZEDENTITIES authtra
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_GUR_AUTHORIZEDENTITIES` authtra
         ON authtra.id = trainingprogram.authorizedproviderid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION progver
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION` progver
         ON progver.id = app.programversionid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM program
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAM` program
         ON program.id = progver.programid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAININGPAYMENTTYPE paytype
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAININGPAYMENTTYPE` paytype
         ON paytype.code = tra.trainingpaymenttypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAININGPAYEE payee
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAININGPAYEE` payee
         ON payee.code = tra.payeetypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS app_sta
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` app_sta
         ON app_sta.code = app.applicationstatusid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORTSTATUS appsuppwfs
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORTSTATUS` appsuppwfs
         ON appsuppwfs.code = appsup.applicationsupportstatusid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_PROVIDERTYPE providertype
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_PROVIDERTYPE` providertype
         ON providertype.id = appsup.providertypeid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENTSTATUS assessmentstatus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENTSTATUS` assessmentstatus
         ON assessmentstatus.code = amt.assessmentstatusid
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER cusapp
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` cusapp
         ON cusapp.id = appsup.individualid
 
     WHERE program.profiletypeid IN ('ENT', 'IND')
@@ -450,28 +511,12 @@ SELECT
 
 FROM final_base
 ),
-training_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-),
+    training_base_mis AS (
 /*
 ============================================================================
 training_enrollment_base_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the Training domain Ã¢â‚¬â€ MIS only.
+Per-source intermediate Silver model for the Training domain â€” MIS only.
 
 Grain: one row per training enrollment (per employee per certificate).
 
@@ -481,7 +526,7 @@ Reference SP: RPT-051_TWS_Training_Enrollments
 Note: this captures training at the enrollment-event layer. The OS2
 counterpart, TRAINING_SUPPORT_BASE_OS2, captures training at the
 application-support layer (the program-funding contract). The two are NOT
-1:1 Ã¢â‚¬â€ an OS2 application support may correspond to zero, one, or many MIS
+1:1 â€” an OS2 application support may correspond to zero, one, or many MIS
 enrollments. For a cross-system view see TRAINING_UNIFIED_BASE.
 
 This SP builds a wide training enrollment view by joining:
@@ -499,11 +544,11 @@ Plus 17 status-history milestones via tws_trainingenrollment_sh.
 Cross-domain note: this model joins extensively to Customer Individual,
 Customer Enterprise, and Certification domains. In the unified Silver layer
 downstream, those joins may be redundant if those domains are also unioned
-in. For now, we mirror what RPT-051 does Ã¢â‚¬â€ the team can decide later whether
+in. For now, we mirror what RPT-051 does â€” the team can decide later whether
 to thin this down.
 
 Sentinel-1900 dates handled inline.
-Option-set decoding via option_set_map CTE.
+Option-set decoding via decode_optionset macro.
 ============================================================================
 */
 
@@ -512,14 +557,14 @@ Option-set decoding via option_set_map CTE.
 -- Pre-aggregated training-enrollment status history
 -- Replaces the @StatusHistory cursor pattern from the SP
 -- ============================================================================
-trn_status_history AS (
+WITH trn_status_history AS (
     SELECT
         sh.tws_training_enrollment_reference     AS training_enrollment_id,
         sh.tws_status_report                     AS status_report_id,
         COUNT(sh.tws_trainingenrollment_shid)    AS occurrence_count,
         MIN(sh.createdon)                        AS first_created_on,
         MAX(sh.createdon)                        AS last_created_on
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TRAININGENROLLMENT_SHBASE sh
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TRAININGENROLLMENT_SHBASE` sh
     WHERE sh.tws_training_enrollment_reference IS NOT NULL
       AND sh.statecode = 0
     GROUP BY
@@ -569,10 +614,74 @@ SELECT
     trn.tws_total_travel_cap                             AS total_travel_cap,
 
     -- Workflow / status (decoded via option-sets)
-     CASE WHEN trn.tws_payable_to IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollment') || '|' || lower('tws_payable_to') || '|' || CAST(trn.tws_payable_to AS STRING)) END AS payable_to, 
-     CASE WHEN trn.tws_workflow_status IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollment') || '|' || lower('tws_workflow_status') || '|' || CAST(trn.tws_workflow_status AS STRING)) END AS workflow_status, 
-     CASE WHEN trn.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollment') || '|' || lower('statuscode') || '|' || CAST(trn.statuscode AS STRING)) END AS status_reason, 
-     CASE WHEN trn.tws_supportpercentage IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollment') || '|' || lower('tws_SupportPercentage') || '|' || CAST(trn.tws_supportpercentage AS STRING)) END AS support_percentage, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollment')
+
+      AND LOWER(sm.attributename) = LOWER('tws_payable_to')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(trn.tws_payable_to AS STRING)
+
+) AS payable_to, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollment')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflow_status')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(trn.tws_workflow_status AS STRING)
+
+) AS workflow_status, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollment')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(trn.statuscode AS STRING)
+
+) AS status_reason, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollment')
+
+      AND LOWER(sm.attributename) = LOWER('tws_SupportPercentage')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(trn.tws_supportpercentage AS STRING)
+
+) AS support_percentage, 
 
     -- Other attributes
     trn.tws_certificate_approval                    AS certificate_approval,
@@ -587,9 +696,57 @@ SELECT
     ind.mis_name                                         AS individual_name,
     ind.mis_email                                        AS individual_email,
     ind.mis_mobile                                       AS individual_mobile,
-     CASE WHEN ind.mis_gender IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('MIS_Gender') || '|' || CAST(ind.mis_gender AS STRING)) END AS individual_gender, 
-     CASE WHEN ind.tmkn_highest_degree_obtained IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('tmkn_highest_degree_obtained') || '|' || CAST(ind.tmkn_highest_degree_obtained AS STRING)) END AS individual_highest_degree, 
-     CASE WHEN ind.mis_universityspecialization IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('mis_UniversitySpecialization') || '|' || CAST(ind.mis_universityspecialization AS STRING)) END AS individual_university_specialization, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('MIS_Gender')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_gender AS STRING)
+
+) AS individual_gender, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_highest_degree_obtained')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.tmkn_highest_degree_obtained AS STRING)
+
+) AS individual_highest_degree, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('mis_UniversitySpecialization')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_universityspecialization AS STRING)
+
+) AS individual_university_specialization, 
     -- Joined: employee application context
     emp.tws_job                                     AS job_title,
 
@@ -604,7 +761,23 @@ SELECT
     cert.mis_broad                                  AS certificate_broad,
     cert.mis_detailed                               AS certificate_detailed,
     cert.mis_narrow                                AS certificate_narrow,
-     CASE WHEN cert.mis_type IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_type') || '|' || CAST(cert.mis_type AS STRING)) END AS certificate_type, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_type')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_type AS STRING)
+
+) AS certificate_type, 
     cert.mis_cap                                         AS certificate_cap,
     cert.mis_awardingbody                           AS awarding_body,
 
@@ -653,20 +826,20 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TRAININGENROLLMENTBASE trn
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_EMPLOYEEAPPLICATIONBASE emp
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TRAININGENROLLMENTBASE` trn
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_EMPLOYEEAPPLICATIONBASE` emp
        ON emp.tws_employeeapplicationid = trn.tws_employee_application
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_INDIVIDUALBASE ind
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_INDIVIDUALBASE` ind
        ON ind.mis_individualid = emp.tws_individual_refrences
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_ENTERPRISEAPPLICATIONBASE entapp
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_ENTERPRISEAPPLICATIONBASE` entapp
        ON entapp.tws_enterpriseapplicationid = emp.tws_enterprise_application
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_COMPANYBASE com
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_COMPANYBASE` com
        ON com.tmkn_companyid = entapp.tws_maincompany
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_CERTIFICATEBASE cert
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_CERTIFICATEBASE` cert
        ON cert.mis_certificateid = trn.tws_certificate
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_CERTIFICATEEXPRIEBASE crtexp
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_CERTIFICATEEXPRIEBASE` crtexp
        ON crtexp.mis_certificateexprieid = trn.tws_certificate_approval
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_PIDBASE pid
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_PIDBASE` pid
        ON pid.tmkn_pidid = trn.tws_product
 
 -- Status history milestones (status report IDs from RPT-051)
@@ -957,7 +1130,7 @@ os2_branch AS (
         CAST(NULL AS TIMESTAMP)                                         AS created_on,
         CAST(NULL AS DATE)                                              AS report_date
 
-    from training_base_os2_source
+    FROM training_base_os2
 
 ),
 
@@ -1019,7 +1192,7 @@ mis_branch AS (
         CAST(training_cost AS DOUBLE)                                   AS tamkeen_cap_amount_bhd,
         CAST(tamkeen_share AS DOUBLE)                                   AS tamkeen_share_amount_bhd,
 
-        CAST(support_percentage AS DOUBLE)                              AS tamkeen_share_pct,
+        TRY_CAST(REGEXP_REPLACE(support_percentage, '[ %]', '') AS DOUBLE) AS tamkeen_share_pct,
 
         CAST(NULL AS DOUBLE)                                            AS customer_share_pct,
         CAST(NULL AS DOUBLE)                                            AS customer_share_amount_with_vat,
@@ -1100,7 +1273,7 @@ mis_branch AS (
         created_on,
         report_date
 
-    from training_base_mis_source
+    FROM training_base_mis
 
 )
 
@@ -1115,122 +1288,123 @@ FROM mis_branch
 
 silver_layer AS (
 SELECT
-    extract_date,
-    source_system_name,
-    source_grain,
-    profile_type,
-    training_record_id,
-    application_id,
-    amendment_id,
-    application_no,
-    workflow_status,
-    assessment_workflow_status,
-    support_decision,
-    program_name,
-    submitted_on,
-    approved_on,
-    contract_start_date,
-    contract_end_date,
-    approval_letter_accepted_on,
-    customer_full_name,
-    cpr,
-    employee_status,
-    training_provider_type,
-    training_provider_name,
-    cr_license_no,
-    training_name,
-    training_program_type,
-    training_payment_type,
-    payee,
-    training_start_date,
-    training_end_date,
-    training_assessment_date,
-    certification_cap_amount_bhd,
-    tamkeen_cap_amount_bhd,
-    tamkeen_share_amount_bhd,
-    tamkeen_share_pct,
-    customer_share_pct,
-    customer_share_amount_with_vat,
-    unutilized_amount_bhd,
-    total_vat_amount_bhd,
-    effective_tamkeen_share_amount_bhd,
-    is_deleted,
-    dbt_updated_at,
-    mis_source_table,
-    training_enrollment_id,
-    training_enrollment_name,
-    payment_request_id,
-    payment_request_name,
-    certificate_id,
-    certificate_name,
-    employee_application_id,
-    employee_application_name,
-    employee_application_anchor_id,
-    enterprise_application_id,
-    enterprise_application_name,
-    company_id,
-    proposed_finish_date,
-    employer_share,
-    discount,
-    total_expense,
-    total_travel_cap,
-    payable_to,
-    status_reason,
-    support_percentage,
-    certificate_approval,
-    created_by_partner,
-    checker_name,
-    monitoring_batch,
-    justification_for_choosing_cert,
-    product_pid_name,
-    individual_email,
-    individual_mobile,
-    individual_gender,
-    individual_highest_degree,
-    individual_university_specialization,
-    job_title,
-    commercial_name_english,
-    commercial_name_arabic,
-    tamkeen_company_category,
-    tamkeen_company_main_category,
-    activity_sector,
-    certificate_broad,
-    certificate_detailed,
-    certificate_narrow,
-    certificate_type,
-    certificate_cap,
-    awarding_body,
-    training_duration_hours,
-    product_pid,
-    last_submission_date,
-    created_by_send_to_checker,
-    created_by_send_to_manager,
-    created_by_mark_approved,
-    created_by_mark_disapproved,
-    last_disapproved_date,
-    created_by_mark_withdrawn,
-    created_by_mark_dropout,
-    last_started_date,
-    last_finished_date,
-    last_mark_approved_by_employee_date,
-    last_mark_disapproved_by_employee_date,
-    last_mark_disapproved_due_parent_date,
-    first_send_back_to_maker_date,
-    last_send_back_to_maker_date,
-    total_count_send_back_to_maker,
-    first_send_back_to_portal_date,
-    last_send_back_to_portal_date,
-    total_count_send_back_to_portal,
-    last_send_to_tsp_date,
-    last_tsp_accepted_date,
-    last_tsp_rejected_date,
-    created_on,
-    report_date
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.training_base
+    `extract_date`,
+    `source_system_name`,
+    `source_grain`,
+    `profile_type`,
+    `training_record_id`,
+    `application_id`,
+    `amendment_id`,
+    `application_no`,
+    `workflow_status`,
+    `assessment_workflow_status`,
+    `support_decision`,
+    `program_name`,
+    `submitted_on`,
+    `approved_on`,
+    `contract_start_date`,
+    `contract_end_date`,
+    `approval_letter_accepted_on`,
+    `customer_full_name`,
+    `cpr`,
+    `employee_status`,
+    `training_provider_type`,
+    `training_provider_name`,
+    `cr_license_no`,
+    `training_name`,
+    `training_program_type`,
+    `training_payment_type`,
+    `payee`,
+    `training_start_date`,
+    `training_end_date`,
+    `training_assessment_date`,
+    `certification_cap_amount_bhd`,
+    `tamkeen_cap_amount_bhd`,
+    `tamkeen_share_amount_bhd`,
+    `tamkeen_share_pct`,
+    `customer_share_pct`,
+    `customer_share_amount_with_vat`,
+    `unutilized_amount_bhd`,
+    `total_vat_amount_bhd`,
+    `effective_tamkeen_share_amount_bhd`,
+    `is_deleted`,
+    `dbt_updated_at`,
+    `mis_source_table`,
+    `training_enrollment_id`,
+    `training_enrollment_name`,
+    `payment_request_id`,
+    `payment_request_name`,
+    `certificate_id`,
+    `certificate_name`,
+    `employee_application_id`,
+    `employee_application_name`,
+    `employee_application_anchor_id`,
+    `enterprise_application_id`,
+    `enterprise_application_name`,
+    `company_id`,
+    `proposed_finish_date`,
+    `employer_share`,
+    `discount`,
+    `total_expense`,
+    `total_travel_cap`,
+    `payable_to`,
+    `status_reason`,
+    `support_percentage`,
+    `certificate_approval`,
+    `created_by_partner`,
+    `checker_name`,
+    `monitoring_batch`,
+    `justification_for_choosing_cert`,
+    `product_pid_name`,
+    `individual_email`,
+    `individual_mobile`,
+    `individual_gender`,
+    `individual_highest_degree`,
+    `individual_university_specialization`,
+    `job_title`,
+    `commercial_name_english`,
+    `commercial_name_arabic`,
+    `tamkeen_company_category`,
+    `tamkeen_company_main_category`,
+    `activity_sector`,
+    `certificate_broad`,
+    `certificate_detailed`,
+    `certificate_narrow`,
+    `certificate_type`,
+    `certificate_cap`,
+    `awarding_body`,
+    `training_duration_hours`,
+    `product_pid`,
+    `last_submission_date`,
+    `created_by_send_to_checker`,
+    `created_by_send_to_manager`,
+    `created_by_mark_approved`,
+    `created_by_mark_disapproved`,
+    `last_disapproved_date`,
+    `created_by_mark_withdrawn`,
+    `created_by_mark_dropout`,
+    `last_started_date`,
+    `last_finished_date`,
+    `last_mark_approved_by_employee_date`,
+    `last_mark_disapproved_by_employee_date`,
+    `last_mark_disapproved_due_parent_date`,
+    `first_send_back_to_maker_date`,
+    `last_send_back_to_maker_date`,
+    `total_count_send_back_to_maker`,
+    `first_send_back_to_portal_date`,
+    `last_send_back_to_portal_date`,
+    `total_count_send_back_to_portal`,
+    `last_send_to_tsp_date`,
+    `last_tsp_accepted_date`,
+    `last_tsp_rejected_date`,
+    `created_on`,
+    `report_date`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`training_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'extract_date'),
         (2, 'source_system_name'),
         (3, 'source_grain'),
@@ -1342,10 +1516,12 @@ bronze_columns(column_position, column_name) AS (
         (109, 'last_tsp_rejected_date'),
         (110, 'created_on'),
         (111, 'report_date')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'extract_date'),
         (2, 'source_system_name'),
         (3, 'source_grain'),
@@ -1457,6 +1633,7 @@ silver_columns(column_position, column_name) AS (
         (109, 'last_tsp_rejected_date'),
         (110, 'created_on'),
         (111, 'report_date')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

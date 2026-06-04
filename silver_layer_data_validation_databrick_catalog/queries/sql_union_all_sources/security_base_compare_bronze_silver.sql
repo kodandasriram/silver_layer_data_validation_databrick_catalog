@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for security_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\security_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\security_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from security_base.sql.
+-- Standalone Databricks SQL generated from security_base.sql.
 -- Final column order aligned to silver_layer_query/security_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =================================================================================================
 
@@ -16,21 +26,21 @@ Description : This model consolidates Security Cheque ticket and application-rel
               with NULL values, and enriches the dataset with workflow status details
               for downstream Silver Layer consumption.
 
-Source Tables : `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_TICKET
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYCHEQUE
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_COLLECTIONMETHOD
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SUBMITTEDLOCATION
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_BANK
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYTYPE
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYSTATUS
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYCHEQUESTATUS
+Source Tables : `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_TICKET`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYCHEQUE`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATIONCUSTOMER`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_COLLECTIONMETHOD`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SUBMITTEDLOCATION`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_BANK`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYTYPE`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYSTATUS`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYCHEQUESTATUS`
 
 Target Table : SECURITY_CHEQUE
 
@@ -99,19 +109,19 @@ SELECT
     sc.echequeprocessexternalevents               as echeque_process_external_events,
     FALSE AS is_deleted,
     'NEO2' AS source_system_name,
-    current_timestamp() + INTERVAL '3' HOUR                AS extract_date,
+    CURRENT_TIMESTAMP + INTERVAL 3 HOURS                AS extract_date,
     sc.securitydate                               as security_date,
     sc.issuedate                                  as issue_date,
     sc.releasedon                                 as released_on,
     CASE
         WHEN SC.REPLACEDON = TIMESTAMP '1900-01-01 00:00:00'
         THEN NULL
-        ELSE SC.REPLACEDON + INTERVAL '3' HOUR
+        ELSE SC.REPLACEDON + INTERVAL 3 HOURS
     END                                                  AS replaced_on,
     CASE
         WHEN SC.CREATEDON = TIMESTAMP '1900-01-01 00:00:00'
         THEN NULL
-        ELSE SC.CREATEDON + INTERVAL '3' HOUR
+        ELSE SC.CREATEDON + INTERVAL 3 HOURS
     END                                                  AS date_collected,
     CASE
         WHEN APP.ENDON = TIMESTAMP '1900-01-01 00:00:00'
@@ -119,51 +129,51 @@ SELECT
         ELSE CAST(APP.ENDON AS DATE)
     END                                                  AS contact_end_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_TICKET tik
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_TICKET` tik
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_TICKETSTATUS tikstat
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_TICKETSTATUS` tikstat
     ON tik.TICKETSTATUSID = tikstat.CODE
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYCHEQUE SC
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYCHEQUE` SC
     ON tik.ENTITYIDENTIFIER = SC.ID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION APP
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` APP
     ON APP.ID = SC.APPLICATIONID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION ProgVer
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION` ProgVer
     ON ProgVer.ID = APP.PROGRAMVERSIONID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATIONCUSTOMER` APPCUS
     ON APP.ID = APPCUS.APPLICATIONID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE` CUSPROF
     ON CUSPROF.ID = APPCUS.CUSTOMERPROFILEID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER CUS
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` CUS
     ON CUSPROF.CUSTOMERID = CUS.ID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY CMP
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY` CMP
     ON CUS.ID = CMP.ID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_COLLECTIONMETHOD collect
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_COLLECTIONMETHOD` collect
     ON SC.CollectionMethodId = collect.ID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SUBMITTEDLOCATION sublocation
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SUBMITTEDLOCATION` sublocation
     ON sublocation.ID = SC.SubmittedLocationId
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER usr
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` usr
     ON usr.USERNAME = SC.CREATEDBY
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_BANK bank
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_BANK` bank
     ON bank.ID = SC.BANKID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYTYPE sectype
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYTYPE` sectype
     ON sectype.ID = SC.SecurityTypeId
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYSTATUS secstat
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYSTATUS` secstat
     ON secstat.ID = SC.SECURITYSTATUSID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_5HX_SECURITYCHEQUESTATUS secstatdetailed
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_5HX_SECURITYCHEQUESTATUS` secstatdetailed
     ON secstatdetailed.CODE = SC.SECURITYCHEQUESTATUS
 
 WHERE tik.TICKETTYPEID = 'SCK'
@@ -218,7 +228,7 @@ SELECT
     date_collected,
     contact_end_date,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.security_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`security_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

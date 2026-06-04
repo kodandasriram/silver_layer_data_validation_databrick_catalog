@@ -1,35 +1,54 @@
+-- Compare bronze-layer query output with silver-layer table output for certification_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\certification_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\certification_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for certification_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: certification_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for certification_base.
+Column order and typed NULL placeholders follow dbt model: certification_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH certification_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-)
+/*
+ =================================================================================================
+
+Name        : CERTIFICATE_BASE
+Description : This model consolidates and standardizes certification-related
+              attributes from MIS and OS2 base models into a unified schema.
+
+Source Tables : certification_base_mis
+                certification_base_os2
+
+Target Table : CERTIFICATE_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
+
+================================================================================================= 
+*/
+
+
+
+WITH
+    certification_base_mis AS (
 /*
 ============================================================================
 silver_certification_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the Certification domain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â MIS only.
+Per-source intermediate Silver model for the Certification domain â€” MIS only.
 
 Sources:
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ mis_certificate          ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â anchor: certificate entity itself
-    mis_certificateexprie    ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â joined: certificate-expiration / approval data
+  â˜… mis_certificate          â€” anchor: certificate entity itself
+    mis_certificateexprie    â€” joined: certificate-expiration / approval data
                                 (used in training context as cert_approval link)
 
 Reference SPs:
@@ -47,7 +66,7 @@ Approach:
 Note on the join: in RPT-051, the relationship is
   trn.tws_certificate_approval = mis_certificateexprie.mis_certificateexprieId
 That pattern is reversed here (we anchor on cert, then look up its expiration
-record). The cardinality may be 1:N ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â review with team if duplicate cert rows
+record). The cardinality may be 1:N â€” review with team if duplicate cert rows
 appear in the output.
 ============================================================================
 */
@@ -73,30 +92,414 @@ SELECT
     -- Option-set decoded fields (from RPT-061)
         
 
-     CASE WHEN cert.mis_employmentrequired IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_employmentrequired') || '|' || CAST(cert.mis_employmentrequired AS STRING)) END AS employment_required, 
-     CASE WHEN cert.mis_bs IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_bs') || '|' || CAST(cert.mis_bs AS STRING)) END AS basic_skill, 
-     CASE WHEN cert.mis_certificatestatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_certificatestatus') || '|' || CAST(cert.mis_certificatestatus AS STRING)) END AS certificate_status, 
-     CASE WHEN cert.mis_onjobtraining IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_onjobtraining') || '|' || CAST(cert.mis_onjobtraining AS STRING)) END AS on_job_training, 
-     CASE WHEN cert.mis_tpcs IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_tpcs') || '|' || CAST(cert.mis_tpcs AS STRING)) END AS tpcs, 
-     CASE WHEN cert.mis_tws IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_tws') || '|' || CAST(cert.mis_tws AS STRING)) END AS tws, 
-     CASE WHEN cert.tmkn_targetedlearners_employee IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_targetedlearners_employee') || '|' || CAST(cert.tmkn_targetedlearners_employee AS STRING)) END AS targeted_learners_employee, 
-     CASE WHEN cert.tmkn_targetedlearners_entrepreneur IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_targetedlearners_entrepreneur') || '|' || CAST(cert.tmkn_targetedlearners_entrepreneur AS STRING)) END AS targeted_learners_entrepreneur, 
-     CASE WHEN cert.tmkn_targetedlearners_jobseeker IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_targetedlearners_jobseeker') || '|' || CAST(cert.tmkn_targetedlearners_jobseeker AS STRING)) END AS targeted_learners_jobseeker, 
-     CASE WHEN cert.tmkn_targetedlearners_student IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_targetedlearners_student') || '|' || CAST(cert.tmkn_targetedlearners_student AS STRING)) END AS targeted_learners_student, 
-     CASE WHEN cert.tmkn_studytype_selfstudy IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_studytype_selfstudy') || '|' || CAST(cert.tmkn_studytype_selfstudy AS STRING)) END AS study_type_self_study, 
-     CASE WHEN cert.tmkn_studytype_online IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_studytype_online') || '|' || CAST(cert.tmkn_studytype_online AS STRING)) END AS study_type_online, 
-     CASE WHEN cert.tmkn_studytype_blendedlearning IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_studytype_blendedlearning') || '|' || CAST(cert.tmkn_studytype_blendedlearning AS STRING)) END AS study_type_blended_learning, 
-     CASE WHEN cert.tmkn_studytype_localtrainingprovider IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_studytype_localtrainingprovider') || '|' || CAST(cert.tmkn_studytype_localtrainingprovider AS STRING)) END AS study_type_local_training_provider, 
-     CASE WHEN cert.tmkn_studytype_inhouse IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_studytype_inhouse') || '|' || CAST(cert.tmkn_studytype_inhouse AS STRING)) END AS study_type_in_house, 
-     CASE WHEN cert.nfc_deactivateflag IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('nfc_deactivateflag') || '|' || CAST(cert.nfc_deactivateflag AS STRING)) END AS deactivate_flag, 
-     CASE WHEN cert.mis_payment_structure IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_payment_structure') || '|' || CAST(cert.mis_payment_structure AS STRING)) END AS payment_structure, 
-     CASE WHEN cert.mis_cap_type IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_cap_type') || '|' || CAST(cert.mis_cap_type AS STRING)) END AS cap_type, 
-     CASE WHEN cert.mis_type IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_type') || '|' || CAST(cert.mis_type AS STRING)) END AS old_type, 
-     CASE WHEN cert.mis_level IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_level') || '|' || CAST(cert.mis_level AS STRING)) END AS level, 
-     CASE WHEN cert.mis_levelqcf IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_levelqcf') || '|' || CAST(cert.mis_levelqcf AS STRING)) END AS level_qcf, 
-     CASE WHEN cert.tmkn_certificatetype IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_certificatetype') || '|' || CAST(cert.tmkn_certificatetype AS STRING)) END AS certificate_type, 
-     CASE WHEN cert.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('statuscode') || '|' || CAST(cert.statuscode AS STRING)) END AS status_reason, 
-     CASE WHEN cert.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('statecode') || '|' || CAST(cert.statecode AS STRING)) END AS state, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_employmentrequired')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_employmentrequired AS STRING)
+
+) AS employment_required, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_bs')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_bs AS STRING)
+
+) AS basic_skill, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_certificatestatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_certificatestatus AS STRING)
+
+) AS certificate_status, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_onjobtraining')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_onjobtraining AS STRING)
+
+) AS on_job_training, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_tpcs')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_tpcs AS STRING)
+
+) AS tpcs, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_tws')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_tws AS STRING)
+
+) AS tws, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_targetedlearners_employee')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_targetedlearners_employee AS STRING)
+
+) AS targeted_learners_employee, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_targetedlearners_entrepreneur')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_targetedlearners_entrepreneur AS STRING)
+
+) AS targeted_learners_entrepreneur, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_targetedlearners_jobseeker')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_targetedlearners_jobseeker AS STRING)
+
+) AS targeted_learners_jobseeker, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_targetedlearners_student')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_targetedlearners_student AS STRING)
+
+) AS targeted_learners_student, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_studytype_selfstudy')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_studytype_selfstudy AS STRING)
+
+) AS study_type_self_study, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_studytype_online')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_studytype_online AS STRING)
+
+) AS study_type_online, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_studytype_blendedlearning')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_studytype_blendedlearning AS STRING)
+
+) AS study_type_blended_learning, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_studytype_localtrainingprovider')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_studytype_localtrainingprovider AS STRING)
+
+) AS study_type_local_training_provider, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_studytype_inhouse')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_studytype_inhouse AS STRING)
+
+) AS study_type_in_house, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('nfc_deactivateflag')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.nfc_deactivateflag AS STRING)
+
+) AS deactivate_flag, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_payment_structure')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_payment_structure AS STRING)
+
+) AS payment_structure, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_cap_type')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_cap_type AS STRING)
+
+) AS cap_type, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_type')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_type AS STRING)
+
+) AS old_type, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_level')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_level AS STRING)
+
+) AS level, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_levelqcf')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_levelqcf AS STRING)
+
+) AS level_qcf, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_certificatetype')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_certificatetype AS STRING)
+
+) AS certificate_type, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.statuscode AS STRING)
+
+) AS status_reason, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.statecode AS STRING)
+
+) AS state, 
 
     -- Numeric attributes
     cert.mis_cap                                         AS cap,
@@ -109,7 +512,7 @@ SELECT
     cert.mis_noofhours                                   AS no_of_hours,
     cert.exchangerate                                    AS exchange_rate,
 
-    -- Aggregated counts (these are pre-computed in source ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â keep as-is in Silver)
+    -- Aggregated counts (these are pre-computed in source â€” keep as-is in Silver)
     cert.nfc_totalnoofindividualapplications             AS total_individual_applications_approved,
     cert.nfc_totalnoofindividualapplications_state       AS total_individual_applications_approved_state,
     cert.nfc_totalnooftwsenrollments                     AS total_tws_enrollments_approved,
@@ -144,18 +547,17 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_CERTIFICATEBASE cert
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_CERTIFICATEEXPRIEBASE crtexp
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_CERTIFICATEBASE` cert
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_CERTIFICATEEXPRIEBASE` crtexp
        ON crtexp.mis_certificateexprieid = cert.mis_certificateid
    -- NOTE: This join direction may need verification with the team.
    -- In RPT-051, the relationship is keyed via the training enrollment
    -- (trn.tws_certificate_approval = crtexp.mis_certificateexprieId).
    -- If a certificate has multiple expiration records, this join may
-   -- produce duplicate cert rows ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â review and adjust with QUALIFY ROW_NUMBER
+   -- produce duplicate cert rows â€” review and adjust with QUALIFY ROW_NUMBER
    -- if needed.
 ),
-certification_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
+    certification_base_os2 AS (
 /*
 =================================================================================================
 
@@ -201,18 +603,24 @@ SELECT
     FALSE AS is_deleted,
     'NEO2' AS source_system_name,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at,
-    ROW_NUMBER() OVER (PARTITION BY cert.id ORDER BY cert.updatedon DESC NULLS LAST, cert.createdon DESC NULLS LAST) AS rnk
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_CERTIFICATION cert
+    ROW_NUMBER() OVER (
+
+    PARTITION BY cert.id
+
+    ORDER BY cert.updatedon DESC, cert.createdon DESC
+
+  ) AS rnk
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_CERTIFICATION` cert
 )
 select cert.id,
     cert.trainingprogramid,
     cert.traininghours,
     cert.trainingprogramtypeid,
     cert.isallowpapers,
-    TRY_CAST(NULLIF(CAST(cert.createdon AS STRING), '') AS TIMESTAMP) as createdon,
-    TRY_CAST(NULLIF(CAST(cert.updatedon AS STRING), '') AS TIMESTAMP) as updatedon,
+    TRY_CAST(cert.createdon AS TIMESTAMP) as createdon,
+    TRY_CAST(cert.updatedon AS TIMESTAMP) as updatedon,
     cert.is_deleted,
-    UPPER(NULLIF(TRIM(CAST(cert.source_system_name AS STRING)), '')) as source_system_name,
+    UPPER(NULLIF(TRIM(cert.source_system_name), '')) as source_system_name,
     cert.dbt_updated_at from source_cte cert
 WHERE rnk=1
 )
@@ -292,12 +700,12 @@ SELECT
     modified_on,
 
     -- Common columns
-    UPPER(TRIM(CAST(source_system_name AS STRING))) AS source_system_name,
+    UPPER(NULLIF(TRIM(source_system_name), '')) AS source_system_name,
     is_deleted,
-    TRY_CAST(NULLIF(CAST(report_date AS STRING), '') AS TIMESTAMP) AS report_date,
-    TRY_CAST(NULLIF(CAST(dbt_updated_at AS STRING), '') AS TIMESTAMP) AS dbt_updated_at
+    TRY_CAST(report_date AS TIMESTAMP) AS report_date,
+    TRY_CAST(dbt_updated_at AS TIMESTAMP) AS dbt_updated_at
 
-from certification_base_mis_source
+FROM certification_base_mis
 
 UNION ALL
 
@@ -377,94 +785,95 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS modified_on,
 
     -- Common columns
-    UPPER(TRIM(CAST(source_system_name AS STRING))) AS source_system_name,
+    UPPER(NULLIF(TRIM(source_system_name), '')) AS source_system_name,
     is_deleted,
     CAST(NULL AS TIMESTAMP)      AS report_date,
-    TRY_CAST(NULLIF(CAST(dbt_updated_at AS STRING), '') AS TIMESTAMP) AS dbt_updated_at
+    TRY_CAST(dbt_updated_at AS TIMESTAMP) AS dbt_updated_at
 
-from certification_base_os2_source
+FROM certification_base_os2
 ),
 
 silver_layer AS (
 SELECT
-    certificate_id,
-    trainingprogramid,
-    traininghours,
-    trainingprogramtypeid,
-    isallowpapers,
-    createdon,
-    updatedon,
-    mis_source_table,
-    certificate_external_id,
-    certificate_name,
-    category,
-    broad,
-    detailed,
-    narrow,
-    awarding_body,
-    employment_required,
-    basic_skill,
-    certificate_status,
-    on_job_training,
-    tpcs,
-    tws,
-    targeted_learners_employee,
-    targeted_learners_entrepreneur,
-    targeted_learners_jobseeker,
-    targeted_learners_student,
-    study_type_self_study,
-    study_type_online,
-    study_type_blended_learning,
-    study_type_local_training_provider,
-    study_type_in_house,
-    deactivate_flag,
-    payment_structure,
-    cap_type,
-    old_type,
-    level,
-    level_qcf,
-    certificate_type,
-    status_reason,
-    state,
-    cap,
-    average_contact_hours,
-    no_of_applicants,
-    tamkeen_support_pct,
-    price,
-    price_per_hour_per_person,
-    duration,
-    no_of_hours,
-    exchange_rate,
-    total_individual_applications_approved,
-    total_individual_applications_approved_state,
-    total_tws_enrollments_approved,
-    total_tws_enrollments_approved_state,
-    total_no_of_applicants,
-    total_tws_enrollments_last_updated_on,
-    total_individual_applications_last_updated_on,
-    overview,
-    tamkeen_eligibility_criteria,
-    analyst_note,
-    crt,
-    certificate_website,
-    nvq_or_other_levels,
-    availability_of_assessment,
-    expiration_training_hours,
-    certificate_expiration_id,
-    owner_name,
-    created_by,
-    modified_by,
-    created_on,
-    modified_on,
-    source_system_name,
-    is_deleted,
-    report_date,
-    dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.certification_base
+    `certificate_id`,
+    `trainingprogramid`,
+    `traininghours`,
+    `trainingprogramtypeid`,
+    `isallowpapers`,
+    `createdon`,
+    `updatedon`,
+    `mis_source_table`,
+    `certificate_external_id`,
+    `certificate_name`,
+    `category`,
+    `broad`,
+    `detailed`,
+    `narrow`,
+    `awarding_body`,
+    `employment_required`,
+    `basic_skill`,
+    `certificate_status`,
+    `on_job_training`,
+    `tpcs`,
+    `tws`,
+    `targeted_learners_employee`,
+    `targeted_learners_entrepreneur`,
+    `targeted_learners_jobseeker`,
+    `targeted_learners_student`,
+    `study_type_self_study`,
+    `study_type_online`,
+    `study_type_blended_learning`,
+    `study_type_local_training_provider`,
+    `study_type_in_house`,
+    `deactivate_flag`,
+    `payment_structure`,
+    `cap_type`,
+    `old_type`,
+    `level`,
+    `level_qcf`,
+    `certificate_type`,
+    `status_reason`,
+    `state`,
+    `cap`,
+    `average_contact_hours`,
+    `no_of_applicants`,
+    `tamkeen_support_pct`,
+    `price`,
+    `price_per_hour_per_person`,
+    `duration`,
+    `no_of_hours`,
+    `exchange_rate`,
+    `total_individual_applications_approved`,
+    `total_individual_applications_approved_state`,
+    `total_tws_enrollments_approved`,
+    `total_tws_enrollments_approved_state`,
+    `total_no_of_applicants`,
+    `total_tws_enrollments_last_updated_on`,
+    `total_individual_applications_last_updated_on`,
+    `overview`,
+    `tamkeen_eligibility_criteria`,
+    `analyst_note`,
+    `crt`,
+    `certificate_website`,
+    `nvq_or_other_levels`,
+    `availability_of_assessment`,
+    `expiration_training_hours`,
+    `certificate_expiration_id`,
+    `owner_name`,
+    `created_by`,
+    `modified_by`,
+    `created_on`,
+    `modified_on`,
+    `source_system_name`,
+    `is_deleted`,
+    `report_date`,
+    `dbt_updated_at`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`certification_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'certificate_id'),
         (2, 'trainingprogramid'),
         (3, 'traininghours'),
@@ -538,10 +947,12 @@ bronze_columns(column_position, column_name) AS (
         (71, 'is_deleted'),
         (72, 'report_date'),
         (73, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'certificate_id'),
         (2, 'trainingprogramid'),
         (3, 'traininghours'),
@@ -615,6 +1026,7 @@ silver_columns(column_position, column_name) AS (
         (71, 'is_deleted'),
         (72, 'report_date'),
         (73, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

@@ -1,273 +1,79 @@
+-- Compare bronze-layer query output with silver-layer table output for application_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\application_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\application_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
-WITH bronze_raw AS (
--- Bronze-layer UNION ALL for application_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: application_base_union all.sql.
--- Source CTEs preserve the standalone OS2, OS1, and MIS joins/functionality,
--- then the dbt union mapping supplies typed NULLs where a source does not carry a column.
-
-WITH os2_source AS (
--- Standalone Trino SQL converted from dbt model.
 /*
- =============================================================================
-   Name          : APPLICATION_BASE
-   Description   : This model extracts and transforms Neo Tamkeen application
-                   data from the NEO2 (OS2) Bronze Layer and loads it into the
-                   APPLICATION_BASE target table as part of the Silver Layer
-                   data pipeline.
-
-                   The model captures application-level details including
-                   program information, customer and enterprise details,
-                   application status, contract lifecycle dates, financial
-                   metrics, monitoring and claiming periods, Tamkeen share
-                   amounts, approval information, and HiPo classification.
-
-                   The model enriches application data by joining multiple
-                   reference and master tables including program version,
-                   program master, customer profile, customer details,
-                   application status, individual customer information,
-                   and company information.
-
-                   Timestamp fields are standardized by:
-                   - Converting invalid sentinel dates
-                     (1900-01-01 00:00:00) to NULL
-                   - Applying +3 hour timezone adjustment to align with
-                     Bahrain local time.
-
-                   Draft applications are excluded from the final dataset.
-
-   Source Tables : neo2.OSUSR_NTP_APPLICATION
-                   neo2.OSUSR_3QQ_PROGRAMVERSION
-                   neo2.OSUSR_3QQ_PROGRAM
-                   neo2.OSUSR_NTP_APPLICATIONCUSTOMER
-                   neo2.OSUSR_ZMZ_CUSTOMERPROFILE
-                   neo2.OSUSR_ZMZ_CUSTOMER
-                   neo2.OSUSR_398_APPLICATIONSTATUS
-                   neo2.OSUSR_ZMZ_INDIVIDUAL
-                   neo2.OSUSR_ZMZ_COMPANY
-
-   Target Table  : APPLICATION_BASE
-
-   Load Type     : Full Load
-   Materialized  : Table
-   Format        : PARQUET
-   Tags          : silver, neo_tamkeen, application
-
-   Business Rules:
-   ---------------------------------------------------------------------------
-   1. Applications with status = 'Draft' are excluded.
-   2. Sentinel timestamps (1900-01-01 00:00:00) are converted to NULL.
-   3. All valid timestamps are adjusted by +3 hours.
-   4. CPR Number is derived for Individuals.
-   5. CR/License Code is derived for Companies.
-   6. HiPo option values are translated as:
-        1 = HiPo
-        2 = Non-HiPo
-
-   Revision History:
-   ---------------------------------------------------------------------------
-   Version  | Date         | Author        | Description
-   ---------------------------------------------------------------------------
-   1.0      | 2026-05-12   | Siva       | Initial Development
-   ---------------------------------------------------------------------------
-============================================================================= 
+Generated Databricks union layer for application_base.
+Column order and typed NULL placeholders follow dbt model: application_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
 */
 
-WITH CTE AS (
-    SELECT *,
-           ROW_NUMBER() OVER (PARTITION BY ID ORDER BY UPDATEDON DESC NULLS LAST, CREATEDON DESC NULLS LAST) AS RNK
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION
-)
+/*
+ =================================================================================================
 
-SELECT APP.id,
-    ProgVer.COMMERCIALNAME_EN                              AS program_name,
-    Program.PROFILETYPEID                                 AS program_type,
-    APP.REFERENCENUMBER                                   AS reference_number,
-    APST.LABEL                                            AS application_status,
+Name        : APPLICATION_BASE
+Description : This model consolidates and standardizes amendment-related attributes
+              from MIS,OS1 and OS2 base models into a unified schema. It aligns column
+              structures across both sources using NULL placeholders where attributes
+              are not available and combines the datasets using UNION ALL.
 
-    CASE 
-        WHEN APP.CUSTOMERTYPEID = 'IND' 
-            THEN IND.CPRNUMBER
-        ELSE CMP.CODE
-    END                                                   AS cr_license_cpr,
+              The model ensures consistent column naming and structure for downstream
+              consumption in the Silver Layer.
 
-    CUS.NAMEEN                                            AS customer_enterprise_name,
+Source Tables : application_base_os1
+                application_base_os2
+				application_base_mis
 
-    CASE 
-        WHEN CAST(APP.APPROVEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.APPROVEDON + INTERVAL '3' HOUR
-    END                                                   AS approved_on_date,
+Target Table : APPLICATION_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
 
-    CASE 
-        WHEN CAST(APP.STARTON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.STARTON + INTERVAL '3' HOUR
-    END                                                   AS contract_start_date,
+Revision History:
+--------------------------------------------------------------
 
-    CASE 
-        WHEN CAST(APP.MONITORINGDUEDATE AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.MONITORINGDUEDATE + INTERVAL '3' HOUR
-    END                                                   AS monitoring_due_date,
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Sivashankar  | Initial version
 
-    CASE 
-        WHEN CAST(APP.ENDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.ENDON + INTERVAL '3' HOUR
-    END                                                   AS contract_end_date,
+================================================================================================= 
+*/
 
-    APP.TKSHAREAMT                                        AS total_approved_amount_tamkeen_share_old,
 
-   --- APP.FINALAPPROVEDTKSHAREAMT                           AS final_amount_tamkeen_share,
-        CAST (NULL AS STRING) AS finalapprovedtkshareamt,
-            CAST (NULL AS STRING) AS final_amount_tamkeen_share,
 
-    CASE 
-        WHEN CAST(APP.CREATEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.CREATEDON + INTERVAL '3' HOUR
-    END                                                   AS created_on,
 
-    CASE 
-        WHEN CAST(APP.SUBMITTEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.SUBMITTEDON + INTERVAL '3' HOUR
-    END                                                   AS submitted_on,
-
-    CASE 
-        WHEN CAST(APP.SPENDINGPERIODDUEDATE AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-            THEN NULL
-        ELSE APP.SPENDINGPERIODDUEDATE + INTERVAL '3' HOUR
-    END                                                   AS spending_period_end_date,
-
-    -- CASE 
-    --     WHEN CAST(APP.APPROVALLETTERACCEPTEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
-    --         THEN NULL
-    --     ELSE APP.APPROVALLETTERACCEPTEDON + INTERVAL '3' HOUR
-    -- END                                                   AS approval_letter_confirmed,
-    CAST (NULL AS STRING) AS approval_letter_confirmed,
-    CASE 
-        WHEN APP.ISHIPOOPTIONID = 1 THEN 'HiPo'
-        WHEN APP.ISHIPOOPTIONID = 2 THEN 'Non-HiPo'
-        ELSE NULL
-    END                                                   AS is_hipo_application,
-    app.programcap                                              AS programcap,
-
-    app.applicationcap                                          AS applicationcap,
-
-    app.tkshareamt                                              AS tkshareamt,
-
-    app.applicationcapunutilized                                AS applicationcapunutilized,
-
-    app.customershareamt                                        AS customershareamt,
-
-    app.totalcostwvat                                           AS totalcostwvat,
-    CASE
-        WHEN app.starton = TIMESTAMP '1900-01-01 00:00:00'
-        THEN NULL
-        ELSE app.starton + INTERVAL '3' HOUR
-    END                                                         AS starton,
-
-    CASE
-        WHEN app.endon = TIMESTAMP '1900-01-01 00:00:00'
-        THEN NULL
-        ELSE app.endon + INTERVAL '3' HOUR
-    END                                                         AS endon,
-
-    CASE
-        WHEN app.monitoringduedate = TIMESTAMP '1900-01-01 00:00:00'
-        THEN NULL
-        ELSE app.monitoringduedate + INTERVAL '3' HOUR
-    END                                                         AS monitoringduedate,
-
-    CASE
-        WHEN app.spendingperiodduedate = TIMESTAMP '1900-01-01 00:00:00'
-        THEN NULL
-        ELSE app.spendingperiodduedate + INTERVAL '3' HOUR    
-    END                                                         AS spendingperiodduedate,    
-    CASE        
-        WHEN app.claimingperiodduedate = TIMESTAMP '1900-01-01 00:00:00'        
-        THEN NULL        ELSE app.claimingperiodduedate + INTERVAL '3' HOUR    
-    END                                                         AS claimingperiodduedate,    
-    app.duration                                                AS duration,    
-    app.isactive                                                AS isactive,    
-    app.createdby                                               AS createdby,    
-    CASE        
-        WHEN app.createdon = TIMESTAMP '1900-01-01 00:00:00'        
-        THEN NULL        ELSE app.createdon + INTERVAL '3' HOUR    
-    END                                                         AS createdon,    
-    app.updatedby                                               AS updatedby,    
-    CASE        
-        WHEN app.updatedon = TIMESTAMP '1900-01-01 00:00:00'        
-        THEN NULL        ELSE app.updatedon + INTERVAL '3' HOUR    
-    END                                                         AS updatedon,    
-    CASE        
-        WHEN app.submittedon = TIMESTAMP '1900-01-01 00:00:00'        
-        THEN NULL        ELSE app.submittedon + INTERVAL '3' HOUR    
-    END                                                         AS submittedon,    
-    CASE        
-        WHEN app.approvedon = TIMESTAMP '1900-01-01 00:00:00'        
-        THEN NULL        ELSE app.approvedon + INTERVAL '3' HOUR    
-    END    AS approvedon,    
-        app.amendappinstancedocgudi_ar                              AS amendappinstancedocgudi_ar,    
-        app.haswagesupportmolemployees                              AS haswagesupportmolemployees,    
-        app.calculatedeconomicvalue                                 AS calculatedeconomicvalue,    
-        app.calculatedgrantamount                                   AS calculatedgrantamount,    
-    'NEO2' AS source_system_name,
-     FALSE AS is_deleted,
-     CURRENT_DATE AS report_date,
-     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at
-
-FROM CTE AS APP
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION ProgVer
-    ON APP.PROGRAMVERSIONID = ProgVer.ID
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM Program
-    ON ProgVer.PROGRAMID = Program.ID
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
-    ON APPCUS.APPLICATIONID = APP.ID
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
-    ON APPCUS.CUSTOMERPROFILEID = CUSPROF.ID
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER CUS
-    ON CUSPROF.CUSTOMERID = CUS.ID
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS APST
-    ON APP.APPLICATIONSTATUSID = APST.CODE
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL IND
-    ON CUSPROF.CUSTOMERID = IND.ID
-
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY CMP
-    ON CUSPROF.CUSTOMERID = CMP.ID
-
-WHERE APST.LABEL <> 'Draft' and APP.RNK=1
-),
-os1_source AS (
+WITH
+    application_base_os1 AS (
 /*
 ============================================================================
 silver_application_os1.sql
 ============================================================================
-Per-source intermediate Silver model for the Application domain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â OS1 only.
+Per-source intermediate Silver model for the Application domain â€” OS1 only.
 
 Sources (Application domain):
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ OSUSR_PX1_APPLICATION                 ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ anchor: the application entity
-    OSUSR_PX1_APPLICATIONSUPPORTDETAILS   ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ 1:1 wide attribute extension
+  â˜… OSUSR_PX1_APPLICATION                 â†’ anchor: the application entity
+    OSUSR_PX1_APPLICATIONSUPPORTDETAILS   â†’ 1:1 wide attribute extension
                                               (RM/Assessor/Approver scoring,
-                                              financing details, grant amounts ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+                                              financing details, grant amounts â€”
                                               ~40 columns)
-    OSUSR_PX1_APPLICATIONSYB              ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ 1:1 SYB-specific attributes
-                                              (turnover, sector ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â used for
+    OSUSR_PX1_APPLICATIONSYB              â†’ 1:1 SYB-specific attributes
+                                              (turnover, sector â€” used for
                                               Start-Your-Business applications)
-    OSUSR_PX1_APPLICATIONINTERNALSTATUSUPDATES21 ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ many:1 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â internal status
+    OSUSR_PX1_APPLICATIONINTERNALSTATUSUPDATES21 â†’ many:1 â€” internal status
                                               audit trail; here we pick the
                                               LATEST per application
-    OSUSR_PX1_CUSTOMERTRAINING            ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ 1:1 customer-training details
-    ossys_User (ÃƒÆ’Ã¢â‚¬â€3)                       ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ RM, Assessor, Approver people
+    OSUSR_PX1_CUSTOMERTRAINING            â†’ 1:1 customer-training details
+    ossys_User (Ã—3)                       â†’ RM, Assessor, Approver people
 
   Lookup tables joined inline:
     OSUSR_PX1_PROGRAM, OSUSR_PX1_PROGRAMTYPE,
@@ -280,17 +86,17 @@ Sources (Application domain):
 
 Reference SPs:
   - RPT-152_neoTamkeen_Applications        (the canonical wide application view)
-  - RPT-156_neoTamkeen_Customer_Contact    (slice ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â application + user + ext)
+  - RPT-156_neoTamkeen_Customer_Contact    (slice â€” application + user + ext)
 
 Notes:
   - The customer-contact data (RPT-156) is folded into this same Silver model
     rather than being a separate file. It's the same entity, just a thinner
     slice. The user / extension columns are added inline.
   - The 40 support-details columns make this file wide but they're all 1:1
-    with the application ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no duplication risk.
+    with the application â€” no duplication risk.
   - Internal status: the source SP uses a temp-table to find the latest update
     per application via MAX(CREATEDON). Here we replace that with a CTE using
-    QUALIFY ROW_NUMBER() ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â same logic, set-based, idiomatic for Trino.
+    QUALIFY ROW_NUMBER() â€” same logic, set-based, idiomatic for Databricks.
   - Cross-domain joins to Payment / Items / etc. are NOT performed here;
     those domains have their own Silver models that preserve APPLICATIONID.
 ============================================================================
@@ -313,7 +119,7 @@ WITH latest_internal_status AS (
                 PARTITION BY APPLICATIONID
                 ORDER BY CREATEDON DESC
             ) AS rn
-        FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONINTERNALSTATUSUPDATES
+        FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONINTERNALSTATUSUPDATES`
     ) ranked
     WHERE rn = 1
 )
@@ -431,7 +237,7 @@ SELECT
     CusTrn.AWARDINGBODYDETAILS                                            AS training_awarding_body_details,
     CusTrn.COUNTRY                                                        AS training_country,
 
-    -- Customer contact (slice from RPT-156 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â joined via app.USERID ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ossys_user)
+    -- Customer contact (slice from RPT-156 â€” joined via app.USERID â†’ ossys_user)
     Cust.NAME                                                             AS customer_name,
     Cust.MobilePhone                                                      AS customer_mobile,
     Cust.EMAIL                                                            AS customer_email,
@@ -458,65 +264,296 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATION app
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PROGRAM                        prog       ON prog.ID       = app.PROGRAMID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PROGRAMTYPE                    prog_typ   ON prog_typ.ID   = prog.PROGRAMTYPEID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUS              stus       ON stus.ID       = app.APPLICATIONSTATUSID
---LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICANTTYPE                  typ        ON typ.ID        = app.ID
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATION` app
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PROGRAM`                        prog       ON prog.ID       = app.PROGRAMID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PROGRAMTYPE`                    prog_typ   ON prog_typ.ID   = prog.PROGRAMTYPEID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUS`              stus       ON stus.ID       = app.APPLICATIONSTATUSID
+--LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICANTTYPE`                  typ        ON typ.ID        = app.ID
 
 -- SYB / sector / turnover 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONTYPE                 p          ON p.ID          = app.ID
---LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TURNOVERVALUE                  trnovr     ON trnovr.ID     = p.TURNOVERVALUEID
---LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_SECTOR                         sec        ON sec.ID        = p.SECTORID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONTYPE`                 p          ON p.ID          = app.ID
+--LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TURNOVERVALUE`                  trnovr     ON trnovr.ID     = p.TURNOVERVALUEID
+--LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_SECTOR`                         sec        ON sec.ID        = p.SECTORID
 
---LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_ASSESSORRECOMENDATION          AR         ON AR.ID         = app.ASSESSORRECOMENDATION
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSUPPORTDETAILS      detls      ON detls.APPLICATIONID = app.ID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                               Approver   ON Approver.ID   = app.APPROVERID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                               Assessor   ON Assessor.ID   = app.ASSESSORID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                               RM         ON RM.ID         = app.RMID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_BANKNAMES                      bank       ON bank.ID       = detls.APPLICATIONID
+--LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_ASSESSORRECOMENDATION`          AR         ON AR.ID         = app.ASSESSORRECOMENDATION
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSUPPORTDETAILS`      detls      ON detls.APPLICATIONID = app.ID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                               Approver   ON Approver.ID   = app.APPROVERID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                               Assessor   ON Assessor.ID   = app.ASSESSORID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                               RM         ON RM.ID         = app.RMID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_BANKNAMES`                      bank       ON bank.ID       = detls.APPLICATIONID
 
 -- Customer training
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_CUSTOMERTRAINING               CusTrn     ON CusTrn.APPLICATIONID = app.ID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_MODEOFDELIVERY                 MofD       ON MofD.ID       = CusTrn.MODEOFDELIVERYID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TRAININGPROGRAM                TrnPrg     ON TrnPrg.ID     = CusTrn.TRAININGPROGRAMID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TRAININGPROGRAMTYPE            TrnPrgTyp  ON TrnPrgTyp.ID  = CusTrn.TRAININGPROGRAMTYPEID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_TYPEOFTRAININGPROVIDER         TypTrnProv ON TypTrnProv.ID = CusTrn.TRAININGPROVIDERTYPEID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_CUSTOMERTRAINING`               CusTrn     ON CusTrn.APPLICATIONID = app.ID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_MODEOFDELIVERY`                 MofD       ON MofD.ID       = CusTrn.MODEOFDELIVERYID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TRAININGPROGRAM`                TrnPrg     ON TrnPrg.ID     = CusTrn.TRAININGPROGRAMID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TRAININGPROGRAMTYPE`            TrnPrgTyp  ON TrnPrgTyp.ID  = CusTrn.TRAININGPROGRAMTYPEID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_TYPEOFTRAININGPROVIDER`         TypTrnProv ON TypTrnProv.ID = CusTrn.TRAININGPROVIDERTYPEID
 
 -- Loan status + latest internal status
---LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONLOANSTATUS          loanStat   ON loanStat.ID   = app.APPLICATIONLOANSTATUSID
+--LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONLOANSTATUS`          loanStat   ON loanStat.ID   = app.APPLICATIONLOANSTATUSID
 LEFT JOIN latest_internal_status                                                  lis        ON lis.application_id = app.ID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONINTERNALSTATUSES  Int_ST     ON Int_ST.ID     = lis.internal_status_id
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONINTERNALSTATUSES`  Int_ST     ON Int_ST.ID     = lis.internal_status_id
 
--- Customer (the applying user) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â folded in from RPT-156
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                               Cust       ON Cust.ID       = app.USERID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION                  CustExt    ON CustExt.USERID = Cust.ID
+-- Customer (the applying user) â€” folded in from RPT-156
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                               Cust       ON Cust.ID       = app.USERID
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION`                  CustExt    ON CustExt.USERID = Cust.ID
 ),
-mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
+    application_base_os2 AS (
+/* =============================================================================
+   Name          : APPLICATION_BASE
+   Description   : This model extracts and transforms Neo Tamkeen application
+                   data from the NEO2 (OS2) Bronze Layer and loads it into the
+                   APPLICATION_BASE target table as part of the Silver Layer
+                   data pipeline.
+
+                   The model captures application-level details including
+                   program information, customer and enterprise details,
+                   application status, contract lifecycle dates, financial
+                   metrics, monitoring and claiming periods, Tamkeen share
+                   amounts, approval information, and HiPo classification.
+
+                   The model enriches application data by joining multiple
+                   reference and master tables including program version,
+                   program master, customer profile, customer details,
+                   application status, individual customer information,
+                   and company information.
+
+                   Timestamp fields are standardized by:
+                   - Converting invalid sentinel dates
+                     (1900-01-01 00:00:00) to NULL
+                   - Applying +3 hour timezone adjustment to align with
+                     Bahrain local time.
+
+                   Draft applications are excluded from the final dataset.
+
+   Source Tables : neo2.OSUSR_NTP_APPLICATION
+                   neo2.OSUSR_3QQ_PROGRAMVERSION
+                   neo2.OSUSR_3QQ_PROGRAM
+                   neo2.OSUSR_NTP_APPLICATIONCUSTOMER
+                   neo2.OSUSR_ZMZ_CUSTOMERPROFILE
+                   neo2.OSUSR_ZMZ_CUSTOMER
+                   neo2.OSUSR_398_APPLICATIONSTATUS
+                   neo2.OSUSR_ZMZ_INDIVIDUAL
+                   neo2.OSUSR_ZMZ_COMPANY
+
+   Target Table  : APPLICATION_BASE
+
+   Load Type     : Full Load
+   Materialized  : Table
+   Format        : PARQUET
+   Tags          : silver, neo_tamkeen, application
+
+   Business Rules:
+   ---------------------------------------------------------------------------
+   1. Applications with status = 'Draft' are excluded.
+   2. Sentinel timestamps (1900-01-01 00:00:00) are converted to NULL.
+   3. All valid timestamps are adjusted by +3 hours.
+   4. CPR Number is derived for Individuals.
+   5. CR/License Code is derived for Companies.
+   6. HiPo option values are translated as:
+        1 = HiPo
+        2 = Non-HiPo
+
+
+   Revision History:
+   ---------------------------------------------------------------------------
+   Version  | Date         | Author        | Description
+   ---------------------------------------------------------------------------
+   1.0      | 2026-05-12   | Siva       | Initial Development
+   ---------------------------------------------------------------------------
+============================================================================= */
+
+WITH CTE AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+
+    PARTITION BY ID
+
+    ORDER BY UPDATEDON DESC, CREATEDON DESC
+
+  ) AS RNK
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION4`
+)
+
+
+SELECT APP.id,
+    ProgVer.COMMERCIALNAME_EN                              AS program_name,
+    Program.PROFILETYPEID                                 AS program_type,
+    APP.REFERENCENUMBER                                   AS reference_number,
+    APST.LABEL                                            AS application_status,
+
+    CASE 
+        WHEN APP.CUSTOMERTYPEID = 'IND' 
+            THEN IND.CPRNUMBER
+        ELSE CMP.CODE
+    END                                                   AS cr_license_cpr,
+
+    CUS.NAMEEN                                            AS customer_enterprise_name,
+
+    CASE 
+        WHEN CAST(APP.APPROVEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.APPROVEDON + INTERVAL 3 HOURS
+    END                                                   AS approved_on_date,
+
+    CASE 
+        WHEN CAST(APP.STARTON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.STARTON + INTERVAL 3 HOURS
+    END                                                   AS contract_start_date,
+
+    CASE 
+        WHEN CAST(APP.MONITORINGDUEDATE AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.MONITORINGDUEDATE + INTERVAL 3 HOURS
+    END                                                   AS monitoring_due_date,
+
+    CASE 
+        WHEN CAST(APP.ENDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.ENDON + INTERVAL 3 HOURS
+    END                                                   AS contract_end_date,
+
+    APP.TKSHAREAMT                                        AS total_approved_amount_tamkeen_share_old,
+
+   --- APP.FINALAPPROVEDTKSHAREAMT                           AS final_amount_tamkeen_share,
+        CAST (NULL AS STRING) AS finalapprovedtkshareamt,
+            CAST (NULL AS STRING) AS final_amount_tamkeen_share,
+
+    CASE 
+        WHEN CAST(APP.CREATEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.CREATEDON + INTERVAL 3 HOURS
+    END                                                   AS created_on,
+
+    CASE 
+        WHEN CAST(APP.SUBMITTEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.SUBMITTEDON + INTERVAL 3 HOURS
+    END                                                   AS submitted_on,
+
+    CASE 
+        WHEN CAST(APP.SPENDINGPERIODDUEDATE AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.SPENDINGPERIODDUEDATE + INTERVAL 3 HOURS
+    END                                                   AS spending_period_end_date,
+
+    CASE 
+        WHEN CAST(APP.APPROVALLETTERACCEPTEDON AS TIMESTAMP) = TIMESTAMP '1900-01-01 00:00:00'
+            THEN NULL
+        ELSE APP.APPROVALLETTERACCEPTEDON + INTERVAL 3 HOURS
+    END                                                   AS approval_letter_confirmed,
+    -- CAST (NULL AS STRING) AS approval_letter_confirmed,
+    CASE 
+        WHEN APP.ISHIPOOPTIONID = 1 THEN 'HiPo'
+        WHEN APP.ISHIPOOPTIONID = 2 THEN 'Non-HiPo'
+        ELSE NULL
+    END                                                   AS is_hipo_application,
+    app.programcap                                              AS programcap,
+
+    app.applicationcap                                          AS applicationcap,
+
+    app.tkshareamt                                              AS tkshareamt,
+
+    app.applicationcapunutilized                                AS applicationcapunutilized,
+
+    app.customershareamt                                        AS customershareamt,
+
+    app.totalcostwvat                                           AS totalcostwvat,
+    CASE
+        WHEN app.starton = TIMESTAMP '1900-01-01 00:00:00'
+        THEN NULL
+        ELSE app.starton + INTERVAL 3 HOURS
+    END                                                         AS starton,
+
+    CASE
+        WHEN app.endon = TIMESTAMP '1900-01-01 00:00:00'
+        THEN NULL
+        ELSE app.endon + INTERVAL 3 HOURS
+    END                                                         AS endon,
+
+    CASE
+        WHEN app.monitoringduedate = TIMESTAMP '1900-01-01 00:00:00'
+        THEN NULL
+        ELSE app.monitoringduedate + INTERVAL 3 HOURS
+    END                                                         AS monitoringduedate,
+
+    CASE
+        WHEN app.spendingperiodduedate = TIMESTAMP '1900-01-01 00:00:00'
+        THEN NULL
+        ELSE app.spendingperiodduedate + INTERVAL 3 HOURS    
+    END                                                         AS spendingperiodduedate,    
+    CASE        
+        WHEN app.claimingperiodduedate = TIMESTAMP '1900-01-01 00:00:00'        
+        THEN NULL        ELSE app.claimingperiodduedate + INTERVAL 3 HOURS    
+    END                                                         AS claimingperiodduedate,    
+    app.duration                                                AS duration,    
+    app.isactive                                                AS isactive,    
+    app.createdby                                               AS createdby,    
+    CASE        
+        WHEN app.createdon = TIMESTAMP '1900-01-01 00:00:00'        
+        THEN NULL        ELSE app.createdon + INTERVAL 3 HOURS    
+    END                                                         AS createdon,    
+    app.updatedby                                               AS updatedby,    
+    CASE        
+        WHEN app.updatedon = TIMESTAMP '1900-01-01 00:00:00'        
+        THEN NULL        ELSE app.updatedon + INTERVAL 3 HOURS    
+    END                                                         AS updatedon,    
+    CASE        
+        WHEN app.submittedon = TIMESTAMP '1900-01-01 00:00:00'        
+        THEN NULL        ELSE app.submittedon + INTERVAL 3 HOURS    
+    END                                                         AS submittedon,    
+    CASE        
+        WHEN app.approvedon = TIMESTAMP '1900-01-01 00:00:00'        
+        THEN NULL        ELSE app.approvedon + INTERVAL 3 HOURS    
+    END    AS approvedon,    
+        -- app.amendappinstancedocgudi_ar                              AS amendappinstancedocgudi_ar,    
+        cast(null as STRING) as amendappinstancedocgudi_ar,
+        app.haswagesupportmolemployees                              AS haswagesupportmolemployees,    
+        app.calculatedeconomicvalue                                 AS calculatedeconomicvalue,    
+        app.calculatedgrantamount                                   AS calculatedgrantamount,    
+    'NEO2' AS source_system_name,
+     FALSE AS is_deleted,
+     CURRENT_DATE AS report_date,
+     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at
+
+FROM CTE AS APP
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION` ProgVer
+    ON APP.PROGRAMVERSIONID = ProgVer.ID
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAM` Program
+    ON ProgVer.PROGRAMID = Program.ID
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATIONCUSTOMER` APPCUS
+    ON APPCUS.APPLICATIONID = APP.ID
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE` CUSPROF
+    ON APPCUS.CUSTOMERPROFILEID = CUSPROF.ID
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` CUS
+    ON CUSPROF.CUSTOMERID = CUS.ID
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` APST
+    ON APP.APPLICATIONSTATUSID = APST.CODE
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL` IND
+    ON CUSPROF.CUSTOMERID = IND.ID
+
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY` CMP
+    ON CUSPROF.CUSTOMERID = CMP.ID
+
+WHERE APST.LABEL <> 'Draft' and APP.RNK=1
 ),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-),
-ind_status_history AS (
+    application_base_mis AS (
+WITH ind_status_history AS (
     SELECT
         sh.mis_indiviualapplicationid                          AS application_id,
         sh.mis_statusreport                                    AS status_report_id,
         COUNT(sh.mis_individualapplicationstatushistoryid)     AS occurrence_count,
         MIN(sh.createdon)                                      AS first_created_on,
         MAX(sh.createdon)                                      AS last_created_on
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_INDIVIDUALAPPLICATIONSTATUSHISTORYBASE sh
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_INDIVIDUALAPPLICATIONSTATUSHISTORYBASE` sh
     WHERE sh.mis_indiviualapplicationid IS NOT NULL
       AND sh.statecode = 0
     GROUP BY
@@ -532,7 +569,7 @@ tmkn_status_history AS (
         MIN(sh.createdon)                                      AS first_created_on,
         MAX(sh.createdon)                                      AS last_created_on,
         sh.tmkn_ref
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_APPSHBASE sh
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_APPSHBASE` sh
     WHERE sh.tmkn_appshid IS NOT NULL
       AND sh.statecode = 0
     GROUP BY
@@ -583,15 +620,159 @@ SELECT
     app.tmkn_salary                                  AS salary,
     app.mis_cert_cap                                 AS certificate_cap,
     app.tmkn_tamkeenshare                            AS tamkeen_share,
-    CASE WHEN app.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('statecode') || '|' || CAST(app.statecode AS STRING)) END                  AS state,
-    CASE WHEN app.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('statuscode') || '|' || CAST(app.statuscode AS STRING)) END               AS status_reason,
-    CASE WHEN app.mis_hasnopayment IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('mis_hasnopayment') || '|' || CAST(app.mis_hasnopayment AS STRING)) END    AS has_no_payment,
-    CASE WHEN app.mis_pass IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('mis_pass') || '|' || CAST(app.mis_pass AS STRING)) END                 AS pass,
-    CASE WHEN app.mis_studytype IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('mis_studytype') || '|' || CAST(app.mis_studytype AS STRING)) END          AS study_type,
-    CASE WHEN app.mis_tpcs_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('mis_tpcs_workflowstatus') || '|' || CAST(app.mis_tpcs_workflowstatus AS STRING)) END  AS workflow_status,
-    CASE WHEN app.tmkn_withdrawreason IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('tmkn_withdrawreason') || '|' || CAST(app.tmkn_withdrawreason AS STRING)) END      AS withdraw_reason,
-    CASE WHEN app.tmkn_violationstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('tmkn_violationstatus') || '|' || CAST(app.tmkn_violationstatus AS STRING)) END     AS violation_status,
-    CASE WHEN app.tmkn_segment IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individualapplication') || '|' || lower('tmkn_segment') || '|' || CAST(app.tmkn_segment AS STRING)) END             AS segment,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.statecode AS STRING)
+
+)                  AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.statuscode AS STRING)
+
+)               AS status_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('mis_hasnopayment')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.mis_hasnopayment AS STRING)
+
+)    AS has_no_payment,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('mis_pass')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.mis_pass AS STRING)
+
+)                 AS pass,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('mis_studytype')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.mis_studytype AS STRING)
+
+)          AS study_type,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('mis_tpcs_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.mis_tpcs_workflowstatus AS STRING)
+
+)  AS workflow_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_withdrawreason')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.tmkn_withdrawreason AS STRING)
+
+)      AS withdraw_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_violationstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.tmkn_violationstatus AS STRING)
+
+)     AS violation_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individualapplication')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_segment')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.tmkn_segment AS STRING)
+
+)             AS segment,
     app.mis_employmentdetails                        AS employment_details,
     app.mis_justificationfcertification              AS justification_for_certification,
     app.modifiedby                               AS modified_by,
@@ -608,21 +789,165 @@ SELECT
     ind.mis_addr_road                                AS individual_addr_road,
     ind.mis_addr_block                               AS individual_addr_block,
     ind.mis_addr_area                                AS individual_addr_area,
-    CASE WHEN ind.mis_schoollevel IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('mis_schoollevel') || '|' || CAST(ind.mis_schoollevel AS STRING)) END              AS individual_school_level,
-    CASE WHEN ind.mis_unversitylevel IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('mis_unversitylevel') || '|' || CAST(ind.mis_unversitylevel AS STRING)) END           AS individual_university_level,
-    CASE WHEN ind.mis_universityspecialization IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('mis_universityspecialization') || '|' || CAST(ind.mis_universityspecialization AS STRING)) END AS individual_university_specialization,
-    CASE WHEN ind.tmkn_highest_degree_obtained IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('tmkn_highest_degree_obtained') || '|' || CAST(ind.tmkn_highest_degree_obtained AS STRING)) END AS individual_highest_degree,
-    CASE WHEN ind.mis_gender IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('mis_gender') || '|' || CAST(ind.mis_gender AS STRING)) END                   AS individual_gender,
-    CASE WHEN ind.mis_qualification IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('mis_qualification') || '|' || CAST(ind.mis_qualification AS STRING)) END            AS individual_qualification,
-    CASE WHEN ind.mis_nationality IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('MIS_individual') || '|' || lower('MIS_Nationality') || '|' || CAST(ind.mis_nationality AS STRING)) END              AS individual_nationality,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('mis_schoollevel')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_schoollevel AS STRING)
+
+)              AS individual_school_level,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('mis_unversitylevel')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_unversitylevel AS STRING)
+
+)           AS individual_university_level,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('mis_universityspecialization')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_universityspecialization AS STRING)
+
+) AS individual_university_specialization,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_highest_degree_obtained')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.tmkn_highest_degree_obtained AS STRING)
+
+) AS individual_highest_degree,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('mis_gender')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_gender AS STRING)
+
+)                   AS individual_gender,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('mis_qualification')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_qualification AS STRING)
+
+)            AS individual_qualification,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('MIS_individual')
+
+      AND LOWER(sm.attributename) = LOWER('MIS_Nationality')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ind.mis_nationality AS STRING)
+
+)              AS individual_nationality,
     CAST(cert.tmkn_id AS STRING)                    AS certificate_external_id,
     cert.mis_category                                AS certificate_old_category,
     cert.mis_broad                                   AS certificate_broad,
     cert.mis_detailed                                AS certificate_detailed,
     cert.mis_narrow                                  AS certificate_narrow,
     cert.mis_awardingbody                            AS certificate_awarding_body,
-    CASE WHEN cert.mis_type IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('mis_type') || '|' || CAST(cert.mis_type AS STRING)) END              AS certificate_type,
-    CASE WHEN cert.tmkn_certificatetype IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_certificate') || '|' || lower('tmkn_CertificateType') || '|' || CAST(cert.tmkn_certificatetype AS STRING)) END  AS certificate_category,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('mis_type')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.mis_type AS STRING)
+
+)              AS certificate_type,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_certificate')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_CertificateType')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(cert.tmkn_certificatetype AS STRING)
+
+)  AS certificate_category,
     sh_submit_analysis.first_created_on              AS first_submit_for_analysis_date,
     sh_submit_analysis.last_created_on               AS last_submit_for_analysis_date,
     sh_send_back.first_created_on                    AS first_send_back_date,
@@ -668,17 +993,17 @@ SELECT
     FALSE AS is_deleted,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_INDIVIDUALAPPLICATIONBASE app
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_INDIVIDUALBASE ind
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_INDIVIDUALAPPLICATIONBASE` app
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_INDIVIDUALBASE` ind
        ON ind.mis_individualid = app.mis_individualid
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_CERTIFICATEBASE cert
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_CERTIFICATEBASE` cert
        ON cert.mis_certificateid = app.mis_certificatename
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_PIDBASE pid
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_PIDBASE` pid
        ON pid.tmkn_pidid = app.tmkn_pid
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_PRODUCTBASE prod
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_PRODUCTBASE` prod
        ON prod.mis_productid = app.mis_productid
 
--- Status history milestones ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â one LEFT JOIN per status of interest
+-- Status history milestones â€” one LEFT JOIN per status of interest
 LEFT JOIN  ind_status_history sh_submit_analysis
        ON sh_submit_analysis.application_id = app.mis_individualapplicationid
       AND sh_submit_analysis.status_report_id = 100000006  -- Submit For Analysis
@@ -739,12 +1064,60 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2))                     AS certificate_cap,
     --app.tmkn_tamkeenshare                            AS tamkeen_share,
     app.tmkn_totaltamkeenshare                       AS tamkeen_share,  
-    CASE WHEN app.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_application') || '|' || lower('statecode') || '|' || CAST(app.statecode AS STRING)) END  AS state,
-    CASE WHEN app.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_application') || '|' || lower('statuscode') || '|' || CAST(app.statuscode AS STRING)) END AS status_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_application')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.statecode AS STRING)
+
+)  AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_application')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.statuscode AS STRING)
+
+) AS status_reason,
     CAST(NULL AS STRING)                            AS has_no_payment,
     CAST(NULL AS STRING)                            AS pass,
     CAST(NULL AS STRING)                            AS study_type,
-    CASE WHEN app.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_application') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(app.tmkn_workflowstatus AS STRING)) END   AS workflow_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_application')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(app.tmkn_workflowstatus AS STRING)
+
+)   AS workflow_status,
     CAST(NULL AS STRING)                            AS withdraw_reason,
     CAST(NULL AS STRING)                            AS violation_status,
     CAST(NULL AS STRING)                            AS segment,
@@ -823,7 +1196,7 @@ SELECT
     FALSE AS is_deleted,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_APPLICATIONBASE app
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_APPLICATIONBASE` app
 LEFT JOIN tmkn_status_history sh_submit
        ON sh_submit.application_id = app.tmkn_applicationid
       AND sh_submit.status_report_id = 100000006
@@ -897,8 +1270,40 @@ SELECT
     CAST(NULL AS DECIMAL(18, 2))                     AS tamkeen_share,  -- Tamkeen share isn't a required field in TWS Wage, and the join to MIS_individual for the tamkeen share causes significant performance issues due to the size of the MIS_individual table. Omit tamkeen share for now; can add back if needed with a more performant join strategy (e.g. pre-joining to a smaller subset of MIS_individual or joining to a TWS Wage-specific individual dimension if available)
 
     -- Status
-    CASE WHEN emp.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_employeeapplication') || '|' || lower('statecode') || '|' || CAST(emp.statecode AS STRING)) END  AS state,
-    CASE WHEN emp.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_employeeapplication') || '|' || lower('statuscode') || '|' || CAST(emp.statuscode AS STRING)) END AS status_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_employeeapplication')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(emp.statecode AS STRING)
+
+)  AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_employeeapplication')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(emp.statuscode AS STRING)
+
+) AS status_reason,
     CAST(NULL AS STRING)                            AS has_no_payment,
     CAST(NULL AS STRING)                            AS pass,
     CAST(NULL AS STRING)                            AS study_type,
@@ -942,7 +1347,7 @@ SELECT
     CAST(NULL AS STRING)                            AS certificate_type,
     CAST(NULL AS STRING)                            AS certificate_category,
 
-    -- Status history (TWS uses different SH table ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â left null until confirmed)
+    -- Status history (TWS uses different SH table â€” left null until confirmed)
     CAST(NULL AS TIMESTAMP)                          AS first_submit_for_analysis_date,
     CAST(NULL AS TIMESTAMP)                          AS last_submit_for_analysis_date,
     CAST(NULL AS TIMESTAMP)                          AS first_send_back_date,
@@ -989,8 +1394,8 @@ SELECT
     FALSE AS is_deleted,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_EMPLOYEEAPPLICATIONBASE emp
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_ENTERPRISEAPPLICATIONBASE ent
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_EMPLOYEEAPPLICATIONBASE` emp
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_ENTERPRISEAPPLICATIONBASE` ent
        ON ent.tws_enterpriseapplicationid = emp.tws_enterprise_application
 ),
 os1 as (
@@ -1237,7 +1642,7 @@ os1 as (
         CAST(NULL AS decimal)    as tmkn_actplangrant,
         CAST(NULL AS decimal)   as tmkn_humancapitaltotalcommitted
 
-    from os1_source
+    from application_base_os1
 ),
 
 os2 as (
@@ -1493,7 +1898,7 @@ os2 as (
         CAST(NULL AS decimal)    as tmkn_actplangrant,
         CAST(NULL AS decimal)   as tmkn_humancapitaltotalcommitted
 
-    from os2_source
+    from application_base_os2
 ),
 mis as (
 
@@ -1769,7 +2174,7 @@ mis as (
         tmkn_actplangrant,
         tmkn_humancapitaltotalcommitted
 
-    from mis_source
+    from application_base_mis
 )
 
 select * from os1
@@ -1777,7 +2182,9 @@ union all
 select * from os2
 union all
 select * from mis
-)
+),
+
+silver_layer AS (
 SELECT
     `os1_source_table`,
     `application_id`,
@@ -1877,114 +2284,12 @@ SELECT
     `dbt_updated_at`,
     `reference_number`,
     `program_type`
-FROM bronze_raw
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`application_base`
 ),
 
-silver_layer AS (
-SELECT
-    os1_source_table,
-    application_id,
-    application_no,
-    cr_license_no,
-    commercial_name,
-    program_id,
-    application_status_id,
-    application_type_id,
-    assessor_recommendation_id,
-    application_loan_status_id,
-    customer_user_id,
-    rm_user_id,
-    assessor_user_id,
-    approver_user_id,
-    application_type,
-    assessor_recommendation,
-    financing_approved_loan_status,
-    sector,
-    turnover,
-    program_name,
-    program_type_name,
-    application_status,
-    internal_status,
-    created_on,
-    approved_on,
-    contract_start_date,
-    contract_end_date,
-    approve_pending_customer_confirmation_on,
-    saved_on,
-    spending_period_end_date,
-    is_financing_approved,
-    program_support_cap,
-    financing_cap,
-    financing_guarantee_cap,
-    approved_financing_amount,
-    approved_guarantee_amount,
-    loan_tenor,
-    interest_rate,
-    loan_start_date,
-    loan_end_date,
-    total_interest_amount,
-    grace_period,
-    monthly_installment,
-    total_requested,
-    approved_grant_maximum,
-    approved_grant,
-    consumed_amount,
-    remaining_amount,
-    cap,
-    tamkeen_share,
-    total_number_employees,
-    bank_name,
-    rm_name,
-    rm_remarks,
-    rm_score,
-    rm_recommended_financing,
-    rm_recommended_grant,
-    rm_assessment_support_cap,
-    assessor_name,
-    assessor_remarks,
-    assessor_score,
-    assessor_recommended_financing,
-    assessor_recommended_grant,
-    assessor_assessment_support_cap,
-    approver_name,
-    approver_remarks,
-    approver_assessment_support_cap,
-    training_name_of_course_certification,
-    training_program_type,
-    training_program,
-    training_overview,
-    training_cost,
-    training_mode_of_delivery,
-    training_estimated_start_date,
-    training_estimated_end_date,
-    training_total_hours,
-    training_include_practical_hours,
-    training_include_job_training,
-    training_provider_type,
-    training_provider_name,
-    training_awarding_body_name,
-    training_awarding_body_details,
-    training_country,
-    customer_name,
-    customer_mobile,
-    customer_email,
-    customer_nationality,
-    customer_gender,
-    customer_date_of_birth,
-    customer_cpr_number,
-    customer_cr_or_cpr,
-    customer_application_name,
-    source_system_name,
-    is_deleted,
-    report_date,
-    dbt_updated_at,
-    reference_number,
-    program_type
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.application_base
-),
-
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'os1_source_table'),
         (2, 'application_id'),
         (3, 'application_no'),
@@ -2083,10 +2388,12 @@ bronze_columns(column_position, column_name) AS (
         (96, 'dbt_updated_at'),
         (97, 'reference_number'),
         (98, 'program_type')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'os1_source_table'),
         (2, 'application_id'),
         (3, 'application_no'),
@@ -2185,6 +2492,7 @@ silver_columns(column_position, column_name) AS (
         (96, 'dbt_updated_at'),
         (97, 'reference_number'),
         (98, 'program_type')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

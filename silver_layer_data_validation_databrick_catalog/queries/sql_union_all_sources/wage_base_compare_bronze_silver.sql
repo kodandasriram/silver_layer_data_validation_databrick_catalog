@@ -1,11 +1,60 @@
+-- Compare bronze-layer query output with silver-layer table output for wage_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\wage_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\wage_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for wage_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: wage_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for wage_base.
+Column order and typed NULL placeholders follow dbt model: wage_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH wage_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
+/*
+ =================================================================================================
+
+Name        : WAGE_BASE
+Description : This model consolidates and standardizes amendment-related attributes
+              from MIS and OS2 base models into a unified schema. It aligns column
+              structures across both sources using NULL placeholders where attributes
+              are not available and combines the datasets using UNION ALL.
+
+              The model ensures consistent column naming and structure for downstream
+              consumption in the Silver Layer.
+
+Source Tables : wage_base_os2
+                wage_base_mis
+
+				
+
+Target Table : WAGE_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Pandian  | Initial version
+
+================================================================================================= 
+*/
+
+
+
+
+WITH
+    wage_base_os2 AS (
 /*
 =================================================================================================
 
@@ -97,26 +146,32 @@ select
     cast(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS DBT_UPDATED_AT,
     a.CURRENTWAGEOVERRIDE,
     a.NEWWAGEOVERRIDE,
-    ROW_NUMBER() OVER (PARTITION BY a.APPLICATIONSUPPORTID ORDER BY a.UPDATEDON DESC NULLS LAST, a.CREATEDON DESC NULLS LAST) AS RNK
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VYW_WAGE a
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_WAGETRACK WT
+    ROW_NUMBER() OVER (
+
+    PARTITION BY a.APPLICATIONSUPPORTID
+
+    ORDER BY a.UPDATEDON DESC, a.CREATEDON DESC
+
+  ) AS RNK
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VYW_WAGE` a
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_WAGETRACK` WT
     ON CAST(WT.CODE AS STRING) = CAST(a.WAGETRACKID AS STRING)
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MM5_COUNTRY4 C
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MM5_COUNTRY4` C
     ON CAST(C.ID AS STRING) = CAST(a.PLACEMENTLOCATION AS STRING)
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VYW_FREQUENCYOFPAYMENT FOP
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VYW_FREQUENCYOFPAYMENT` FOP
     ON CAST(FOP.CODE AS STRING) = CAST(a.FREQUENCYOFPAYMENT AS STRING)
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_SALARYSTATUS SS
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_SALARYSTATUS` SS
     ON CAST(SS.CODE AS STRING) = CAST(a.NEWWAGESALARYSTATUSID AS STRING)
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_JOBLEVEL JL
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_JOBLEVEL` JL
     ON CAST(JL.CODE AS STRING) = CAST(a.NEWJOBLEVELID AS STRING)
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VYW_WAGESTIPENDTYPE WST
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VYW_WAGESTIPENDTYPE` WST
     ON WST.WAGEID = a.APPLICATIONSUPPORTID
 )
 
 SELECT
-  TRY_CAST(NULLIF(CAST(APPLICATIONSUPPORTID AS STRING), '') AS BIGINT) AS applicationsupportid,
-TRY_CAST(NULLIF(CAST(STARTDATE AS STRING), '') AS TIMESTAMP) AS startdate,
-TRY_CAST(NULLIF(CAST(ENDDATE AS STRING), '') AS TIMESTAMP) AS enddate,
+  TRY_CAST(APPLICATIONSUPPORTID AS BIGINT) AS applicationsupportid,
+TRY_CAST(STARTDATE AS TIMESTAMP) AS startdate,
+TRY_CAST(ENDDATE AS TIMESTAMP) AS enddate,
 NEWJOBLEVELID AS newjoblevelid,
 NEWJOBLEVEL AS newjoblevel,
 NEWTITLE AS newtitle,
@@ -124,7 +179,7 @@ NEWDEPARTMENT AS newdepartment,
 NEWRESPONSABILITIES AS newresponsabilities,
 REQUESTEDINCREMENTAMOUNT AS requestedincrementamount,
 NEWWAGE AS newwage,
-TRY_CAST(NULLIF(CAST(REQUESTEDSTIPEND AS STRING), '') AS BIGINT) AS requestedstipend,
+TRY_CAST(REQUESTEDSTIPEND AS BIGINT) AS requestedstipend,
 PLACEMENTLOCATION AS placementlocation,
 HOSTORGANIZATIONNAME AS hostorganizationname,
 PLACEMENTJOBTITLE AS placementjobtitle,
@@ -133,9 +188,9 @@ PLACEMENTSKILLSANDKNOWLEDGE AS placementskillsandknowledge,
 DIRECTSUPERVISORNAME AS directsupervisorname,
 DIRECTSUPERVISORMOBILEPREFIX AS directsupervisormobileprefix,
 DIRECTSUPERVISORCONTACTNUMBE AS directsupervisorcontactnumbe,
-TRY_CAST(NULLIF(CAST(PLACEMENTSTARTDATE AS STRING), '') AS TIMESTAMP) AS placementstartdate,
-TRY_CAST(NULLIF(CAST(PLACEMENTENDDATE AS STRING), '') AS TIMESTAMP) AS placementenddate,
-TRY_CAST(NULLIF(CAST(TOTALDURATION AS STRING), '') AS BIGINT) AS totalduration,
+TRY_CAST(PLACEMENTSTARTDATE AS TIMESTAMP) AS placementstartdate,
+TRY_CAST(PLACEMENTENDDATE AS TIMESTAMP) AS placementenddate,
+TRY_CAST(TOTALDURATION AS BIGINT) AS totalduration,
 TKSHAREAMT AS tkshareamt,
 CUSTOMERSHAREAMT AS customershareamt,
 FREQUENCYOFPAYMENT AS frequencyofpayment,
@@ -147,51 +202,35 @@ NEWWAGESALARYSTATUSID AS newwagesalarystatusid,
 NEWWAGESALARYSTATUS AS newwagesalarystatus,
 NEWWAGESOURCEINDICATOR AS newwagesourceindicator,
 STIPENDTRAINING_PROVIDERNAME AS stipendtraining_providername,
-TRY_CAST(NULLIF(CAST(STIPENDTRAINING_PROGRAMID AS STRING), '') AS BIGINT) AS stipendtraining_programid,
+TRY_CAST(STIPENDTRAINING_PROGRAMID AS BIGINT) AS stipendtraining_programid,
 STIPENDTRAINING_PROGRAMNAME AS stipendtraining_programname,
 INCREMENTPERCENTAGE AS incrementpercentage,
 TYPEOFPLEDGEID AS typeofpledgeid,
 EXTRAS AS extras,
 ISNEWWAGEABOVE1800 AS isnewwageabove1800,
-TRY_CAST(NULLIF(CAST(CREATEDON AS STRING), '') AS TIMESTAMP) AS createdon,
-TRY_CAST(NULLIF(CAST(UPDATEDON AS STRING), '') AS TIMESTAMP) AS updatedon,
+TRY_CAST(CREATEDON AS TIMESTAMP) AS createdon,
+TRY_CAST(UPDATEDON AS TIMESTAMP) AS updatedon,
 IS_DELETED AS is_deleted,
-UPPER(NULLIF(TRIM(CAST(SOURCE_SYSTEM_NAME AS STRING)), '')) AS source_system_name,
-TRY_CAST(NULLIF(CAST(DBT_UPDATED_AT AS STRING), '') AS TIMESTAMP) AS dbt_updated_at,
+UPPER(NULLIF(TRIM(SOURCE_SYSTEM_NAME), '')) AS source_system_name,
+TRY_CAST(DBT_UPDATED_AT AS TIMESTAMP) AS dbt_updated_at,
 CURRENTWAGEOVERRIDE AS currentwageoverride,
 NEWWAGEOVERRIDE AS newwageoverride
 from source_cte a
 WHERE rnk = 1
 ),
-wage_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-)
+    wage_base_mis AS (
 /*
 ============================================================================
 SILVER_WAGE_MIS.SQL
 ============================================================================
-PER-SOURCE INTERMEDIATE SILVER MODEL FOR THE WAGE DOMAIN Ã¢â‚¬â€ MIS ONLY.
+PER-SOURCE INTERMEDIATE SILVER MODEL FOR THE WAGE DOMAIN â€” MIS ONLY.
 
 SOURCES (WAGE DOMAIN ENTITIES):
-  Ã¢Ëœâ€¦ TWS_WAGESUBSIDY                Ã¢â‚¬â€ WAGE SUBSIDY APPLICATIONS (PARENT)
-    TWS_PAYSUBSIDY                 Ã¢â‚¬â€ PAY SUBSIDY INSTALLMENTS (CHILD OF WAGESUBSIDY)
-  Ã¢Ëœâ€¦ TWS_WAGEINCREMENT              Ã¢â‚¬â€ WAGE INCREMENT APPLICATIONS (PARENT)
-    TWS_PAYINCREMENT               Ã¢â‚¬â€ PAY INCREMENT INSTALLMENTS (CHILD OF WAGEINCREMENT)
-    TWS_WAGES_SUPPORT_CONFIGURATION Ã¢â‚¬â€ CONFIG / SEGMENT REFERENCE
+  â˜… TWS_WAGESUBSIDY                â€” WAGE SUBSIDY APPLICATIONS (PARENT)
+    TWS_PAYSUBSIDY                 â€” PAY SUBSIDY INSTALLMENTS (CHILD OF WAGESUBSIDY)
+  â˜… TWS_WAGEINCREMENT              â€” WAGE INCREMENT APPLICATIONS (PARENT)
+    TWS_PAYINCREMENT               â€” PAY INCREMENT INSTALLMENTS (CHILD OF WAGEINCREMENT)
+    TWS_WAGES_SUPPORT_CONFIGURATION â€” CONFIG / SEGMENT REFERENCE
 
 REFERENCE SPS:
   - RPT-045_WAGE_SUBSIDY_APPLICATIONS
@@ -247,21 +286,213 @@ SELECT
     WS.CREATEDON                                         AS created_on,
 
     -- WORKFLOW / STATUS
-    CASE WHEN ws.tws_workflow_status IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('tws_workflow_status') || '|' || CAST(ws.tws_workflow_status AS STRING)) END AS workflow_status,
-    CASE WHEN ws.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('statecode') || '|' || CAST(ws.statecode AS STRING)) END AS state,
-    CASE WHEN ws.tws_support_level IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('tws_support_level') || '|' || CAST(ws.tws_support_level AS STRING)) END AS support_level,
-    CASE WHEN ws.tws_recommendation_to IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('tws_recommendation_to') || '|' || CAST(ws.tws_recommendation_to AS STRING)) END AS recommendation_to,
-    CASE WHEN ws.tws_payment_structure IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('tws_payment_structure') || '|' || CAST(ws.tws_payment_structure AS STRING)) END AS payment_structure,
-    CASE WHEN ws.tws_disapprove_reason IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('tws_disapprove_reason') || '|' || CAST(ws.tws_disapprove_reason AS STRING)) END AS disapprove_reason,
-    CASE WHEN ws.tws_checker_recommendation_to IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy') || '|' || lower('tws_checker_recommendation_to') || '|' || CAST(ws.tws_checker_recommendation_to AS STRING)) END AS checker_recommendation_to,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflow_status')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.tws_workflow_status AS STRING)
+
+) AS workflow_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.statecode AS STRING)
+
+) AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_support_level')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.tws_support_level AS STRING)
+
+) AS support_level,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_recommendation_to')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.tws_recommendation_to AS STRING)
+
+) AS recommendation_to,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_payment_structure')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.tws_payment_structure AS STRING)
+
+) AS payment_structure,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_disapprove_reason')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.tws_disapprove_reason AS STRING)
+
+) AS disapprove_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_checker_recommendation_to')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ws.tws_checker_recommendation_to AS STRING)
+
+) AS checker_recommendation_to,
 
     -- CONFIGURATION
     CO.TWS_CAP_AMOUNT                                    AS config_cap_amount,
-    CASE WHEN co.tws_back_dated IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wages_support_configuration') || '|' || lower('tws_back_dated') || '|' || CAST(co.tws_back_dated AS STRING)) END AS config_back_dated,
-    CASE WHEN co.tws_created_by_mol IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wages_support_configuration') || '|' || lower('tws_created_by_mol') || '|' || CAST(co.tws_created_by_mol AS STRING)) END AS config_created_by_mol,
-    CASE WHEN co.tws_grace_period IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wages_support_configuration') || '|' || lower('tws_grace_Period') || '|' || CAST(co.tws_grace_period AS STRING)) END AS config_grace_period,
-    CASE WHEN co.tws_jobseekers IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wages_support_configuration') || '|' || lower('tws_jobseekers') || '|' || CAST(co.tws_jobseekers AS STRING)) END AS config_jobseekers,
-    CASE WHEN co.tws_terminated_employee IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wages_support_configuration') || '|' || lower('tws_terminated_employee') || '|' || CAST(co.tws_terminated_employee AS STRING)) END AS config_terminated_employee,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wages_support_configuration')
+
+      AND LOWER(sm.attributename) = LOWER('tws_back_dated')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(co.tws_back_dated AS STRING)
+
+) AS config_back_dated,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wages_support_configuration')
+
+      AND LOWER(sm.attributename) = LOWER('tws_created_by_mol')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(co.tws_created_by_mol AS STRING)
+
+) AS config_created_by_mol,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wages_support_configuration')
+
+      AND LOWER(sm.attributename) = LOWER('tws_grace_Period')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(co.tws_grace_period AS STRING)
+
+) AS config_grace_period,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wages_support_configuration')
+
+      AND LOWER(sm.attributename) = LOWER('tws_jobseekers')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(co.tws_jobseekers AS STRING)
+
+) AS config_jobseekers,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wages_support_configuration')
+
+      AND LOWER(sm.attributename) = LOWER('tws_terminated_employee')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(co.tws_terminated_employee AS STRING)
+
+) AS config_terminated_employee,
 
     -- MIGRATION
     WS.TMKN_ISMIGRATED                                   AS is_migrated,
@@ -273,9 +504,9 @@ SELECT
     CURRENT_DATE                                         AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGESUBSIDYBASE WS
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGESUBSIDYBASE` WS
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGES_SUPPORT_CONFIGURATIONBASE CO
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGES_SUPPORT_CONFIGURATIONBASE` CO
     ON CO.TWS_WAGES_SUPPORT_CONFIGURATIONID = WS.TWS_SEGMENT_REFERENCE
 
 UNION ALL
@@ -326,8 +557,40 @@ SELECT
     PS.CREATEDON                                         AS created_on,
 
     -- WORKFLOW / STATUS
-    CASE WHEN ps.tws_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_paysubsidy') || '|' || lower('tws_workflowstatus') || '|' || CAST(ps.tws_workflowstatus AS STRING)) END AS workflow_status,
-    CASE WHEN ps.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_paysubsidy') || '|' || lower('statuscode') || '|' || CAST(ps.statuscode AS STRING)) END AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_paysubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ps.tws_workflowstatus AS STRING)
+
+) AS workflow_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_paysubsidy')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(ps.statuscode AS STRING)
+
+) AS state,
     CAST(NULL AS STRING)                                AS support_level,
     CAST(NULL AS STRING)                                AS recommendation_to,
     CAST(NULL AS STRING)                                AS payment_structure,
@@ -352,9 +615,9 @@ SELECT
     CURRENT_DATE                                         AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_PAYSUBSIDYBASE PS
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_PAYSUBSIDYBASE` PS
 
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGESUBSIDYBASE WS
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGESUBSIDYBASE` WS
     ON WS.TWS_WAGESUBSIDYID = PS.TWS_WAGE_SUBSIDY_REFERENCE
 
 UNION ALL
@@ -405,12 +668,60 @@ SELECT
     WI.CREATEDON                                         AS created_on,
 
     -- WORKFLOW / STATUS
-    CASE WHEN wi.tws_workflow_status IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wageincrement') || '|' || lower('tws_workflow_status') || '|' || CAST(wi.tws_workflow_status AS STRING)) END AS workflow_status,
-    CASE WHEN wi.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wageincrement') || '|' || lower('statecode') || '|' || CAST(wi.statecode AS STRING)) END AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wageincrement')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflow_status')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(wi.tws_workflow_status AS STRING)
+
+) AS workflow_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wageincrement')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(wi.statecode AS STRING)
+
+) AS state,
     CAST(NULL AS STRING)                                AS support_level,
     CAST(NULL AS STRING)                                AS recommendation_to,
     CAST(NULL AS STRING)                                AS payment_structure,
-    CASE WHEN wi.tws_disapprove_reason IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wageincrement') || '|' || lower('tws_disapprove_reason') || '|' || CAST(wi.tws_disapprove_reason AS STRING)) END AS disapprove_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wageincrement')
+
+      AND LOWER(sm.attributename) = LOWER('tws_disapprove_reason')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(wi.tws_disapprove_reason AS STRING)
+
+) AS disapprove_reason,
     CAST(NULL AS STRING)                                AS checker_recommendation_to,
 
     -- CONFIGURATION
@@ -431,7 +742,7 @@ SELECT
     CURRENT_DATE                                         AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGEINCREMENTBASE WI
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGEINCREMENTBASE` WI
 
 UNION ALL
 
@@ -481,8 +792,40 @@ SELECT
     PI.CREATEDON                                         AS created_on,
 
     -- WORKFLOW / STATUS
-    CASE WHEN pi.tws_workflow_status IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_payincrement') || '|' || lower('tws_workflowstatus') || '|' || CAST(pi.tws_workflow_status AS STRING)) END AS workflow_status,
-    CASE WHEN pi.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_payincrement') || '|' || lower('statuscode') || '|' || CAST(pi.statuscode AS STRING)) END AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_payincrement')
+
+      AND LOWER(sm.attributename) = LOWER('tws_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(pi.tws_workflow_status AS STRING)
+
+) AS workflow_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_payincrement')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(pi.statuscode AS STRING)
+
+) AS state,
     CAST(NULL AS STRING)                                AS support_level,
     CAST(NULL AS STRING)                                AS recommendation_to,
     CAST(NULL AS STRING)                                AS payment_structure,
@@ -507,24 +850,24 @@ SELECT
     CURRENT_DATE                                         AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_PAYINCREMENTBASE PI
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_PAYINCREMENTBASE` PI
 
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGEINCREMENTBASE WI
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGEINCREMENTBASE` WI
     ON WI.TWS_WAGEINCREMENTID = PI.TWS_WAGE_INCREMENT_REFERENCE
 )
 SELECT
     -- OS2 COLUMNS
     CAST(applicationsupportid AS STRING)                 AS applicationsupportid,
-    TRY_CAST(NULLIF(CAST(startdate AS STRING), '') AS DATE)                     AS startdate,
-    TRY_CAST(NULLIF(CAST(enddate AS STRING), '') AS DATE)                       AS enddate,
+    TRY_CAST(startdate AS DATE)                     AS startdate,
+    TRY_CAST(enddate AS DATE)                       AS enddate,
     CAST(newjoblevelid AS STRING)                        AS newjoblevelid,
     CAST(newjoblevel AS STRING)                          AS newjoblevel,
     CAST(newtitle AS STRING)                             AS newtitle,
     CAST(newdepartment AS STRING)                        AS newdepartment,
     CAST(newresponsabilities AS STRING)                  AS newresponsabilities,
-    TRY_CAST(NULLIF(CAST(requestedincrementamount AS STRING), '') AS BIGINT)   AS requestedincrementamount,
-    TRY_CAST(NULLIF(CAST(newwage AS STRING), '') AS BIGINT)                    AS newwage,
-    TRY_CAST(NULLIF(CAST(requestedstipend AS STRING), '') AS BIGINT)           AS requestedstipend,
+    TRY_CAST(requestedincrementamount AS BIGINT)   AS requestedincrementamount,
+    TRY_CAST(newwage AS BIGINT)                    AS newwage,
+    TRY_CAST(requestedstipend AS BIGINT)           AS requestedstipend,
     CAST(placementlocation AS STRING)                    AS placementlocation,
     CAST(hostorganizationname AS STRING)                 AS hostorganizationname,
     CAST(placementjobtitle AS STRING)                    AS placementjobtitle,
@@ -533,14 +876,14 @@ SELECT
     CAST(directsupervisorname AS STRING)                 AS directsupervisorname,
     CAST(directsupervisormobileprefix AS STRING)         AS directsupervisormobileprefix,
     CAST(directsupervisorcontactnumbe AS STRING)         AS directsupervisorcontactnumbe,
-    TRY_CAST(NULLIF(CAST(placementstartdate AS STRING), '') AS DATE)            AS placementstartdate,
-    TRY_CAST(NULLIF(CAST(placementenddate AS STRING), '') AS DATE)              AS placementenddate,
+    TRY_CAST(placementstartdate AS DATE)            AS placementstartdate,
+    TRY_CAST(placementenddate AS DATE)              AS placementenddate,
     CAST(totalduration AS STRING)                        AS totalduration,
-    TRY_CAST(NULLIF(CAST(tkshareamt AS STRING), '') AS BIGINT)                 AS tkshareamt,
-    TRY_CAST(NULLIF(CAST(customershareamt AS STRING), '') AS BIGINT)           AS customershareamt,
+    TRY_CAST(tkshareamt AS BIGINT)                 AS tkshareamt,
+    TRY_CAST(customershareamt AS BIGINT)           AS customershareamt,
     CAST(frequencyofpayment AS STRING)                   AS frequencyofpayment,
-    CAST(iseligible AS BOOLEAN)                           AS iseligible,
-    TRY_CAST(NULLIF(CAST(tkshareunamt AS STRING), '') AS BIGINT)               AS tkshareunamt,
+    TRY_CAST(iseligible AS BOOLEAN)                           AS iseligible,
+    TRY_CAST(tkshareunamt AS BIGINT)               AS tkshareunamt,
     CAST(wagetrackid AS STRING)                          AS wagetrackid,
     CAST(wagetrack AS STRING)                            AS wagetrack,
     CAST(newwagesalarystatusid AS STRING)                AS newwagesalarystatusid,
@@ -549,12 +892,12 @@ SELECT
     CAST(stipendtraining_providername AS STRING)         AS stipendtraining_providername,
     CAST(stipendtraining_programid AS STRING)            AS stipendtraining_programid,
     CAST(stipendtraining_programname AS STRING)          AS stipendtraining_programname,
-    TRY_CAST(NULLIF(CAST(incrementpercentage AS STRING), '') AS BIGINT)        AS incrementpercentage,
+    TRY_CAST(incrementpercentage AS BIGINT)        AS incrementpercentage,
     CAST(typeofpledgeid AS STRING)                       AS typeofpledgeid,
     CAST(extras AS STRING)                               AS extras,
-    CAST(isnewwageabove1800 AS BOOLEAN)                   AS isnewwageabove1800,
-    TRY_CAST(NULLIF(CAST(currentwageoverride AS STRING), '') AS BIGINT)        AS currentwageoverride,
-    TRY_CAST(NULLIF(CAST(newwageoverride AS STRING), '') AS BIGINT)            AS newwageoverride,
+    TRY_CAST(isnewwageabove1800 AS BOOLEAN)                   AS isnewwageabove1800,
+    TRY_CAST(currentwageoverride AS BIGINT)        AS currentwageoverride,
+    TRY_CAST(newwageoverride AS BIGINT)            AS newwageoverride,
 
     -- MIS COLUMNS
     CAST(NULL AS STRING)                                 AS wage_subtype,
@@ -602,14 +945,14 @@ SELECT
     CAST(NULL AS DECIMAL)                                 AS tws_required_increment,
 	CAST(NULL AS DECIMAL)                                 AS tws_new_wage,
     -- COMMON AUDIT COLUMNS
-    TRY_CAST(NULLIF(CAST(createdon AS STRING), '') AS TIMESTAMP)                AS created_on,
-    TRY_CAST(NULLIF(CAST(updatedon AS STRING), '') AS TIMESTAMP)                AS updated_on,
+    TRY_CAST(createdon AS TIMESTAMP)                AS created_on,
+    TRY_CAST(updatedon AS TIMESTAMP)                AS updated_on,
     is_deleted,
     source_system_name,
     CAST(CURRENT_DATE AS DATE)                                    AS report_date,
     dbt_updated_at
 
-from wage_base_os2_source
+FROM wage_base_os2
 
 UNION ALL
 
@@ -677,15 +1020,15 @@ SELECT
     CAST(sponsorship AS STRING)                          AS sponsorship,
     CAST(owner_name AS STRING)                           AS owner_name,
     CAST(created_by_partner AS STRING)                   AS created_by_partner,
-    TRY_CAST(NULLIF(CAST(current_wage AS STRING), '') AS BIGINT)               AS current_wage,
-    TRY_CAST(NULLIF(CAST(pay_amount AS STRING), '') AS BIGINT)                 AS pay_amount,
-    TRY_CAST(NULLIF(CAST(pay_amount_old AS STRING), '') AS BIGINT)             AS pay_amount_old,
+    TRY_CAST(current_wage AS BIGINT)               AS current_wage,
+    TRY_CAST(pay_amount AS BIGINT)                 AS pay_amount,
+    TRY_CAST(pay_amount_old AS BIGINT)             AS pay_amount_old,
     CAST(pay_year AS STRING)                             AS pay_year,
-    TRY_CAST(NULLIF(CAST(pay_due_date AS STRING), '') AS DATE)                  AS pay_due_date,
+    TRY_CAST(pay_due_date AS DATE)                  AS pay_due_date,
     CAST(pay_no_of_months AS STRING)                     AS pay_no_of_months,
-    TRY_CAST(NULLIF(CAST(support_start_date AS STRING), '') AS DATE)            AS support_start_date,
-    TRY_CAST(NULLIF(CAST(submitted_on AS STRING), '') AS TIMESTAMP)             AS submitted_on,
-    TRY_CAST(NULLIF(CAST(approved_on AS STRING), '') AS TIMESTAMP)              AS approved_on,
+    TRY_CAST(support_start_date AS DATE)            AS support_start_date,
+    TRY_CAST(submitted_on AS TIMESTAMP)             AS submitted_on,
+    TRY_CAST(approved_on AS TIMESTAMP)              AS approved_on,
     CAST(workflow_status AS STRING)                      AS workflow_status,
     CAST(state AS STRING)                                AS state,
     CAST(support_level AS STRING)                        AS support_level,
@@ -693,125 +1036,126 @@ SELECT
     CAST(payment_structure AS STRING)                    AS payment_structure,
     CAST(disapprove_reason AS STRING)                    AS disapprove_reason,
     CAST(checker_recommendation_to AS STRING)            AS checker_recommendation_to,
-    TRY_CAST(NULLIF(CAST(config_cap_amount AS STRING), '') AS BIGINT)          AS config_cap_amount,
-    CAST(config_back_dated AS BOOLEAN)                    AS config_back_dated,
-    CAST(config_created_by_mol AS BOOLEAN)                AS config_created_by_mol,
+    TRY_CAST(config_cap_amount AS BIGINT)          AS config_cap_amount,
+    TRY_CAST(config_back_dated AS BOOLEAN)                    AS config_back_dated,
+    TRY_CAST(config_created_by_mol AS BOOLEAN)                AS config_created_by_mol,
     CAST(config_grace_period AS STRING)                  AS config_grace_period,
-    CAST(config_jobseekers AS BOOLEAN)                    AS config_jobseekers,
-    CAST(config_terminated_employee AS BOOLEAN)           AS config_terminated_employee,
-    CAST(is_migrated AS BOOLEAN)                          AS is_migrated,
+    TRY_CAST(config_jobseekers AS BOOLEAN)                    AS config_jobseekers,
+    TRY_CAST(config_terminated_employee AS BOOLEAN)           AS config_terminated_employee,
+    TRY_CAST(is_migrated AS BOOLEAN)                          AS is_migrated,
 	CAST(tws_required_increment AS DECIMAL)               AS tws_required_increment,
     CAST(tws_new_wage AS DECIMAL)                         AS tws_new_wage,
 
     -- COMMON AUDIT COLUMNS
-    TRY_CAST(NULLIF(CAST(created_on AS STRING), '') AS TIMESTAMP)               AS created_on,
+    TRY_CAST(created_on AS TIMESTAMP)               AS created_on,
     CAST(NULL AS TIMESTAMP)                               AS updated_on,
     is_deleted,
     source_system_name,
-    TRY_CAST(NULLIF(CAST(report_date AS STRING), '') AS DATE)                   AS report_date,
+    TRY_CAST(report_date AS DATE)                   AS report_date,
     dbt_updated_at
 
-from wage_base_mis_source
+FROM wage_base_mis
 ),
 
 silver_layer AS (
 SELECT
-    applicationsupportid,
-    startdate,
-    enddate,
-    newjoblevelid,
-    newjoblevel,
-    newtitle,
-    newdepartment,
-    newresponsabilities,
-    requestedincrementamount,
-    newwage,
-    requestedstipend,
-    placementlocation,
-    hostorganizationname,
-    placementjobtitle,
-    placementjobresponsabilities,
-    placementskillsandknowledge,
-    directsupervisorname,
-    directsupervisormobileprefix,
-    directsupervisorcontactnumbe,
-    placementstartdate,
-    placementenddate,
-    totalduration,
-    tkshareamt,
-    customershareamt,
-    frequencyofpayment,
-    iseligible,
-    tkshareunamt,
-    wagetrackid,
-    wagetrack,
-    newwagesalarystatusid,
-    newwagesalarystatus,
-    newwagesourceindicator,
-    stipendtraining_providername,
-    stipendtraining_programid,
-    stipendtraining_programname,
-    incrementpercentage,
-    typeofpledgeid,
-    extras,
-    isnewwageabove1800,
-    currentwageoverride,
-    newwageoverride,
-    wage_subtype,
-    mis_source_table,
-    wage_id,
-    wage_application_no,
-    employee_application_id,
-    individual_id,
-    segment_reference_id,
-    product_pid_id,
-    es_application_id,
-    parent_wage_id,
-    payment_request_id,
-    company_name_denorm,
-    employee_application_name,
-    enterprise_application_name,
-    segment_reference_name,
-    product_pid_name,
-    sponsorship,
-    owner_name,
-    created_by_partner,
-    current_wage,
-    pay_amount,
-    pay_amount_old,
-    pay_year,
-    pay_due_date,
-    pay_no_of_months,
-    support_start_date,
-    submitted_on,
-    approved_on,
-    workflow_status,
-    state,
-    support_level,
-    recommendation_to,
-    payment_structure,
-    disapprove_reason,
-    checker_recommendation_to,
-    config_cap_amount,
-    config_back_dated,
-    config_created_by_mol,
-    config_grace_period,
-    config_jobseekers,
-    config_terminated_employee,
-    is_migrated,
-    tws_required_increment,
-    tws_new_wage,
-    created_on,
-    updated_on,
-    is_deleted,
-    source_system_name,
-    report_date,
-    dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.wage_base
+    `applicationsupportid`,
+    `startdate`,
+    `enddate`,
+    `newjoblevelid`,
+    `newjoblevel`,
+    `newtitle`,
+    `newdepartment`,
+    `newresponsabilities`,
+    `requestedincrementamount`,
+    `newwage`,
+    `requestedstipend`,
+    `placementlocation`,
+    `hostorganizationname`,
+    `placementjobtitle`,
+    `placementjobresponsabilities`,
+    `placementskillsandknowledge`,
+    `directsupervisorname`,
+    `directsupervisormobileprefix`,
+    `directsupervisorcontactnumbe`,
+    `placementstartdate`,
+    `placementenddate`,
+    `totalduration`,
+    `tkshareamt`,
+    `customershareamt`,
+    `frequencyofpayment`,
+    `iseligible`,
+    `tkshareunamt`,
+    `wagetrackid`,
+    `wagetrack`,
+    `newwagesalarystatusid`,
+    `newwagesalarystatus`,
+    `newwagesourceindicator`,
+    `stipendtraining_providername`,
+    `stipendtraining_programid`,
+    `stipendtraining_programname`,
+    `incrementpercentage`,
+    `typeofpledgeid`,
+    `extras`,
+    `isnewwageabove1800`,
+    `currentwageoverride`,
+    `newwageoverride`,
+    `wage_subtype`,
+    `mis_source_table`,
+    `wage_id`,
+    `wage_application_no`,
+    `employee_application_id`,
+    `individual_id`,
+    `segment_reference_id`,
+    `product_pid_id`,
+    `es_application_id`,
+    `parent_wage_id`,
+    `payment_request_id`,
+    `company_name_denorm`,
+    `employee_application_name`,
+    `enterprise_application_name`,
+    `segment_reference_name`,
+    `product_pid_name`,
+    `sponsorship`,
+    `owner_name`,
+    `created_by_partner`,
+    `current_wage`,
+    `pay_amount`,
+    `pay_amount_old`,
+    `pay_year`,
+    `pay_due_date`,
+    `pay_no_of_months`,
+    `support_start_date`,
+    `submitted_on`,
+    `approved_on`,
+    `workflow_status`,
+    `state`,
+    `support_level`,
+    `recommendation_to`,
+    `payment_structure`,
+    `disapprove_reason`,
+    `checker_recommendation_to`,
+    `config_cap_amount`,
+    `config_back_dated`,
+    `config_created_by_mol`,
+    `config_grace_period`,
+    `config_jobseekers`,
+    `config_terminated_employee`,
+    `is_migrated`,
+    `tws_required_increment`,
+    `tws_new_wage`,
+    `created_on`,
+    `updated_on`,
+    `is_deleted`,
+    `source_system_name`,
+    `report_date`,
+    `dbt_updated_at`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`wage_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'applicationsupportid'),
         (2, 'startdate'),
         (3, 'enddate'),
@@ -903,10 +1247,12 @@ bronze_columns(column_position, column_name) AS (
         (89, 'source_system_name'),
         (90, 'report_date'),
         (91, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'applicationsupportid'),
         (2, 'startdate'),
         (3, 'enddate'),
@@ -998,6 +1344,7 @@ silver_columns(column_position, column_name) AS (
         (89, 'source_system_name'),
         (90, 'report_date'),
         (91, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

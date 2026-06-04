@@ -1,12 +1,22 @@
+-- Compare bronze-layer query output with silver-layer table output for moic_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\moic_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\moic_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from moic_base.sql.
+-- Standalone Databricks SQL generated from moic_base.sql.
 -- Final column order aligned to silver_layer_query/moic_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =============================================================================
    Name          : MOIC_BASE_OS2
-   Description   : Unified MOIC Silver model for OS2 â€” combines the previously-
+   Description   : Unified MOIC Silver model for OS2 — combines the previously-
                    separated MOIC_DATA_BASE_OS2 (enterprise master from MOIC
                    CRDETAILS + LMRA + SIO) and MOIC_ACTIVITIES_BASE_OS2 (ISIC4
                    activity classification from MOIC CRACTIVITY) into a single
@@ -16,7 +26,7 @@ bronze_layer AS (
                      - RPT-237_MOIC_Data         (enterprise master + workforce)
                      - RPT-233_MOIC_Activities   (sector / activity codes)
 
-                   The merge is a LEFT JOIN â€” not a UNION â€” because the two
+                   The merge is a LEFT JOIN — not a UNION — because the two
                    sources describe DIFFERENT ATTRIBUTES of the same business
                    entity (the application's enterprise CR), not different rows
                    of the same kind.
@@ -54,14 +64,14 @@ bronze_layer AS (
 WITH
 
 -- =====================================================================
--- 1. MOIC data anchor â€” deduplicated to one row per application
+-- 1. MOIC data anchor — deduplicated to one row per application
 --    (preserves the original moic_data_base_os2 logic)
 -- =====================================================================
 cte_moic AS (
     SELECT
         moic1.*,
         ROW_NUMBER() OVER (PARTITION BY moic1.APPLICATIONID ORDER BY moic1.UPDATEDON DESC NULLS LAST, moic1.CREATEDON DESC NULLS LAST) AS rnk
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MYA_MOIC_CRDETAILS moic1
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MYA_MOIC_CRDETAILS` moic1
     WHERE moic1.PAYMENTREQUESTID = 0
       AND moic1.ELIGIBILITYCRITERIAREQUESTTY = 'ASS'
       AND moic1.CRNUMBER IS NOT NULL
@@ -70,30 +80,30 @@ cte_moic AS (
 
 cte_lmra AS (
     SELECT *
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MYA_LMRA_DETAILS
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MYA_LMRA_DETAILS`
     WHERE PAYMENTREQUESTID = 0
       AND ELIGIBILITYCRITERIAREQUESTTY = 'ASS'
 ),
 
 cte_sio AS (
     SELECT *
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MYA_SIO_ESTABLISHMENTDETAILS
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MYA_SIO_ESTABLISHMENTDETAILS`
     WHERE PAYMENTREQUESTID = 0
       AND ELIGIBILITYCRITERIAREQUESTTY = 'ASS'
 ),
 
 -- =====================================================================
--- 2. MOIC activities â€” aggregate sector/ISIC codes per (application, CR, createdon)
+-- 2. MOIC activities — aggregate sector/ISIC codes per (application, CR, createdon)
 --    (preserves the original moic_activities_base_os2 array_agg/array_join logic)
 -- =====================================================================
 cte_activities_raw AS (
     SELECT
         moic.*,
         sectorisicactivity.LABEL AS sector_activity_label
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MYA_MOIC_CRACTIVITY moic
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_SECTORISIC3 sectorisic
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MYA_MOIC_CRACTIVITY` moic
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_SECTORISIC3` sectorisic
         ON moic.BUSINESSACTIVITYCODE = sectorisic.ISICCODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_SECTORISICACTIVITY3 sectorisicactivity
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_SECTORISICACTIVITY3` sectorisicactivity
         ON sectorisicactivity.CODE = sectorisic.SECTORISICACTIVITYID
     WHERE moic.PAYMENTREQUESTID = 0
       AND moic.ELIGIBILITYCRITERIAREQUESTTY = 'ASS'
@@ -185,7 +195,7 @@ cte_activities AS (
 )
 
 -- =====================================================================
--- 4. Final merge â€” LEFT JOIN activities onto MOIC data
+-- 4. Final merge — LEFT JOIN activities onto MOIC data
 -- =====================================================================
 SELECT
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS DATE)                       AS extract_date,
@@ -410,7 +420,7 @@ SELECT
     is_deleted,
     source_system_name,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.moic_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`moic_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

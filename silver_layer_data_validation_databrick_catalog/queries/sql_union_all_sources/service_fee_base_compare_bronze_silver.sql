@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for service_fee_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\service_fee_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\service_fee_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from service_fee_base.sql.
+-- Standalone Databricks SQL generated from service_fee_base.sql.
 -- Final column order aligned to silver_layer_query/service_fee_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =============================================================================
    Name          : service_fee
@@ -63,7 +73,7 @@ SELECT
         TDT.BRONZE_UPDATED_ON as UPDATEDON,
         TDT.BRONZE_CREATED_ON as CREATEDON,
         cast(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS DBT_UPDATED_AT
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_VW9_TRAININGDELIVERYTYPE TDT
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_VW9_TRAININGDELIVERYTYPE` TDT
 )
 SELECT
     LABEL AS label,
@@ -83,7 +93,7 @@ SELECT
     updatedon,
     createdon,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.service_fee_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`service_fee_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

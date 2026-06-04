@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for unstructured_questions_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\unstructured_questions_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\unstructured_questions_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from unstructured_questions_base.sql.
+-- Standalone Databricks SQL generated from unstructured_questions_base.sql.
 -- Final column order aligned to silver_layer_query/unstructured_questions_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =================================================================================================
 
@@ -38,7 +48,7 @@ Version | Date       | Author  | Description
 WITH cte_analysis_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -104,18 +114,18 @@ WITH cte_analysis_form AS (
         FIELD.EXPRESSION
         --'ANALYSIS' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.ANALYSISINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -124,7 +134,7 @@ WITH cte_analysis_form AS (
 cte_application_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -190,18 +200,18 @@ cte_application_form AS (
         FIELD.EXPRESSION
         --'APPLICATION' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.APPLICATIONINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -210,7 +220,7 @@ cte_application_form AS (
 cte_customer_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -276,18 +286,18 @@ cte_customer_form AS (
         FIELD.EXPRESSION
         --'CUSTOMER' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.CUSTOMERINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -296,7 +306,7 @@ cte_customer_form AS (
 cte_evc_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -362,18 +372,18 @@ cte_evc_form AS (
         FIELD.EXPRESSION
         --'EVC' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.EVCINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -382,7 +392,7 @@ cte_evc_form AS (
 cte_findata_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -448,18 +458,18 @@ cte_findata_form AS (
         FIELD.EXPRESSION
         --'FINDATA' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.FINDATAINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -468,7 +478,7 @@ cte_findata_form AS (
 cte_grantcalc_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -534,18 +544,18 @@ cte_grantcalc_form AS (
         FIELD.EXPRESSION
         --'GRANTCALC' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.GRANTCALCINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -554,7 +564,7 @@ cte_grantcalc_form AS (
 cte_hipo_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -620,18 +630,18 @@ cte_hipo_form AS (
         FIELD.EXPRESSION
         --'HIPO' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.HIPOINSTANCEFORMGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -640,7 +650,7 @@ cte_hipo_form AS (
 cte_profiling_form AS (
 
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS DATE)      AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS DATE)      AS EXTRACT_DATE,
         APP.ID AS ID_APPLICATION,
         APP.GUID AS ID_GUID,
         APP.REFERENCENUMBER AS APPLICATION_NO,
@@ -706,18 +716,18 @@ cte_profiling_form AS (
         FIELD.EXPRESSION
         --'PROFILING' AS FORM_TYPE
 
-    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION AS APP
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORMINSTANCE AS FORMINST 
+    FROM  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` AS APP
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORMINSTANCE` AS FORMINST 
         ON FORMINST.GUID = APP.PROFILINGINSTANCEGUID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FORM AS FORM 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FORM` AS FORM 
         ON FORM.ID = FORMINST.FORMID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTION AS SECTION 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTION` AS SECTION 
         ON SECTION.FORMID= FORM.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_SECTIONFIELD AS SECFIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_SECTIONFIELD` AS SECFIELD 
         ON SECFIELD.SECTIONID = SECTION.ID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELD AS FIELD 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELD` AS FIELD 
         ON FIELD.ID = SECFIELD.FIELDID
-    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_QFS_FIELDVALUE AS FIELDVALUE 
+    INNER JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_QFS_FIELDVALUE` AS FIELDVALUE 
         ON FIELDVALUE.FORMINSTANCEID = FORMINST.ID 
         AND FIELDVALUE.SECTIONFIELDID = SECFIELD.ID
 
@@ -974,7 +984,7 @@ SELECT
     is_deleted,
     source_system_name,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.unstructured_questions_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`unstructured_questions_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for financing_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\financing_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\financing_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from financing_base.sql.
+-- Standalone Databricks SQL generated from financing_base.sql.
 -- Final column order aligned to silver_layer_query/financing_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =================================================================================================
 
@@ -85,20 +95,20 @@ SELECT
     'NEO2' AS source_system_name,
     cast(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at,
     ROW_NUMBER() OVER (PARTITION BY F.id ORDER BY F.updatedon DESC NULLS LAST, F.createdon DESC NULLS LAST) AS rnk
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_FINANCING f
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_H95_FACILITYTYPE ft 
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_FINANCING` f
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_H95_FACILITYTYPE` ft 
         ON f.FACILITYTYPEID = ft.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_YESNOOPTION yn1
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_YESNOOPTION` yn1
         ON f.revolvingloan = yn1.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_DISBURSEMENTTYPE dt
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_DISBURSEMENTTYPE` dt
         ON f.DISBURSEMENTTYPEID = dt.ID   
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_FINANCINGPRODUCTTYPE fpt
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_FINANCINGPRODUCTTYPE` fpt
         ON f.FINANCINGPRODUCTTYPEID = fpt.ID 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_H95_PAYMENTFREQUENCY pf
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_H95_PAYMENTFREQUENCY` pf
         ON f.PAYMENTFREQUENCYID = pf.CODE   
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MM5_YESNOOPTION4 yn2
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MM5_YESNOOPTION4` yn2
         ON f.facilitieswithbank = yn2.ID 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MM5_YESNOOPTION4 yn3
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MM5_YESNOOPTION4` yn3
         ON f.workingcapitalfacilitieswith = yn3.ID            
 )
  SELECT
@@ -202,7 +212,7 @@ SELECT
     updatedon,
     dbt_updated_at,
     source_system_name
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.financing_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`financing_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

@@ -11,8 +11,8 @@ bronze_layer AS (
         company AS company_name,
         `program feedback notes` AS program_feedback_notes,
         `created on` AS created_on,
-        CAST('ODOO' AS STRING) AS source_system_name,
-        current_timestamp() AS dbt_updated_at
+        CAST('ODOO' AS STRING) AS source_system_name
+        --current_timestamp() AS dbt_updated_at
     FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.odoo_calendar
 ),
 
@@ -28,8 +28,8 @@ silver_layer AS (
         company_name,
         program_feedback_notes,
         created_on,
-        source_system_name,
-        dbt_updated_at
+        source_system_name
+        --dbt_updated_at
     FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.odoo_calendar_event_base
 ),
 
@@ -45,8 +45,8 @@ bronze_columns(column_position, column_name) AS (
         (8, 'company_name'),
         (9, 'program_feedback_notes'),
         (10, 'created_on'),
-        (11, 'source_system_name'),
-        (12, 'dbt_updated_at')
+        (11, 'source_system_name')
+        --(12, 'dbt_updated_at')
 ),
 
 silver_columns(column_position, column_name) AS (
@@ -61,8 +61,8 @@ silver_columns(column_position, column_name) AS (
         (8, 'company_name'),
         (9, 'program_feedback_notes'),
         (10, 'created_on'),
-        (11, 'source_system_name'),
-        (12, 'dbt_updated_at')
+        (11, 'source_system_name')
+        --(12, 'dbt_updated_at')
 ),
 
 bronze_normalized AS (
@@ -77,8 +77,8 @@ bronze_normalized AS (
         CAST(company_name AS STRING) AS company_name,
         CAST(program_feedback_notes AS STRING) AS program_feedback_notes,
         CAST(created_on AS STRING) AS created_on,
-        CAST(source_system_name AS STRING) AS source_system_name,
-        CAST(dbt_updated_at AS STRING) AS dbt_updated_at
+        CAST(source_system_name AS STRING) AS source_system_name
+        --CAST(dbt_updated_at AS STRING) AS dbt_updated_at
     FROM bronze_layer
 ),
 
@@ -94,8 +94,8 @@ silver_normalized AS (
         CAST(company_name AS STRING) AS company_name,
         CAST(program_feedback_notes AS STRING) AS program_feedback_notes,
         CAST(created_on AS STRING) AS created_on,
-        CAST(source_system_name AS STRING) AS source_system_name,
-        CAST(dbt_updated_at AS STRING) AS dbt_updated_at
+        CAST(source_system_name AS STRING) AS source_system_name
+        --CAST(dbt_updated_at AS STRING) AS dbt_updated_at
     FROM silver_layer
 ),
 

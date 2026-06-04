@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for special_condition_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\special_condition_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\special_condition_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from special_condition_base.sql.
+-- Standalone Databricks SQL generated from special_condition_base.sql.
 -- Final column order aligned to silver_layer_query/special_condition_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =============================================================================
    Name          : RPT_265_NEOTAMKEEN_OS2_SPECIAL_CONDITIONS
@@ -62,26 +72,26 @@ WITH PROCESS AS
         ACT.CLOSED                                                           AS CLOSED,
         SCF.BRONZE_CREATED_ON,
         SCF.BRONZE_UPDATED_ON
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_765_SPECIALCONDITIONFULFILMENT SCF
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_PROCESS PRO
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_765_SPECIALCONDITIONFULFILMENT` SCF
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_PROCESS` PRO
         ON PRO.ID = SCF.PROCESSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY ACT
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY` ACT
         ON ACT.PROCESS_ID = PRO.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_DEFINITION ACTDEF
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_DEFINITION` ACTDEF
         ON ACT.ACTIVITY_DEF_ID = ACTDEF.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_HMY_ACTIVITYEXTENDED ACT_EXT
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_HMY_ACTIVITYEXTENDED` ACT_EXT
         ON ACT_EXT.ID = ACT.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2FH_APPLICATIONASSESSMENTACTIONS ACTIONS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2FH_APPLICATIONASSESSMENTACTIONS` ACTIONS
         ON ACTIONS.KEY = ACT_EXT.SELECTEDACTIONKEY
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_DEF_ROLE ADR
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_DEF_ROLE` ADR
         ON ACTDEF.ID = ADR.ACTIVITY_DEF_ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_ROLE R
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_ROLE` R
         ON ADR.ROLE_ID = R.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER U
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` U
         ON ACT.USER_ID = U.ID
     WHERE ACTDEF.KIND = (
         SELECT ID
-        FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_KIND
+        FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_KIND`
         WHERE NAME = 'Human Activity'
     )
 ),
@@ -89,7 +99,7 @@ WITH PROCESS AS
 CTE_SPECIAL_CONDITIONS AS
 (
     SELECT
-        CAST(current_timestamp() + INTERVAL '3' HOUR AS date)                AS EXTRACT_DATE,
+        CAST((current_timestamp() + INTERVAL 3 HOURS) AS date)                AS EXTRACT_DATE,
         PROGVER.COMMERCIALNAME_EN                                           AS PROGRAM_NAME,
         CASE
             WHEN SPCONDTION.REFERENCENUMBER = '' THEN SCF.REFERENCENUMBER
@@ -138,21 +148,21 @@ CTE_SPECIAL_CONDITIONS AS
         PROCESS.OWNER                                                       AS OWNER,
         CASE
             WHEN SCF.SUBMISSIONDATE = TIMESTAMP '1900-01-01 00:00:00.000' THEN NULL
-            ELSE SCF.SUBMISSIONDATE + INTERVAL '3' HOUR
+            ELSE (SCF.SUBMISSIONDATE + INTERVAL 3 HOURS)
         END                                                                 AS SUBMITTED_ON,
-        PROCESS_ASSESSOR.CLOSED + INTERVAL '3' HOUR                        AS VERIFIED_ON,
+        (PROCESS_ASSESSOR.CLOSED + INTERVAL 3 HOURS)                        AS VERIFIED_ON,
         PROCESS_ASSESSOR.OWNER                                              AS VERIFIED_BY,
-        PROCESS_APPROVAL.CLOSED + INTERVAL '3' HOUR                        AS APPROVED_ON,
+        (PROCESS_APPROVAL.CLOSED + INTERVAL 3 HOURS)                        AS APPROVED_ON,
         PROCESS_APPROVAL.OWNER                                              AS APPROVED_BY,
         CASE
-            WHEN SCF_STAT.LABEL = 'Rejected' THEN SCF.UPDATEDON + INTERVAL '3' HOUR
+            WHEN SCF_STAT.LABEL = 'Rejected' THEN (SCF.UPDATEDON + INTERVAL 3 HOURS)
             ELSE NULL
         END                                                                  AS REJECTED_ON,
         CASE
             WHEN SCF_STAT.LABEL = 'Rejected' THEN PROCESS_ASSESSOR.OWNER
             ELSE NULL
         END                                                                  AS REJECTED_BY,
-        SCF.UPDATEDON + INTERVAL '3' HOUR                                     AS DECISION_DATE,
+        (SCF.UPDATEDON + INTERVAL 3 HOURS)                                     AS DECISION_DATE,
         CASE
             WHEN SPCONDTION.ISACTIVE THEN 'TRUE'
             ELSE 'FALSE'
@@ -162,36 +172,36 @@ CTE_SPECIAL_CONDITIONS AS
         SCF.BRONZE_CREATED_ON as createdon,
         SCF.BRONZE_UPDATED_ON as updatedon,
         CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)             AS DBT_UPDATED_AT
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_L68_SPECIALCONDITION SPCONDTION
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_765_SPECIALCONDITIONFULFILMENT SCF
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_L68_SPECIALCONDITION` SPCONDTION
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_765_SPECIALCONDITIONFULFILMENT` SCF
         ON SCF.SPECIALCONDITIONID = SPCONDTION.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_765_MONITORINGSTATUS SCF_STAT
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_765_MONITORINGSTATUS` SCF_STAT
         ON SCF_STAT.CODE = SCF.MONITORINGSTATUSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_L68_SPECIALCONDITIONSTATUS SPCONDTION_STAT
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_L68_SPECIALCONDITIONSTATUS` SPCONDTION_STAT
         ON SPCONDTION.SPECIALCONDITIONSTATUSID = SPCONDTION_STAT.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION APP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION` APP
         ON SPCONDTION.APPLICATIONID = APP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS APPWFS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` APPWFS
         ON APPWFS.CODE = APP.APPLICATIONSTATUSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION PROGVER
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION` PROGVER
         ON PROGVER.ID = APP.PROGRAMVERSIONID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATIONCUSTOMER APPCUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATIONCUSTOMER` APPCUS
         ON APP.ID = APPCUS.APPLICATIONID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE CUSPROF
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE` CUSPROF
         ON CUSPROF.ID = APPCUS.CUSTOMERPROFILEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER CUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER` CUS
         ON CUSPROF.CUSTOMERID = CUS.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY CMP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY` CMP
         ON CUS.ID = CMP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_SUPPORTAREA SUPPAREA
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_SUPPORTAREA` SUPPAREA
         ON SUPPAREA.CODE = SPCONDTION.SUPPORTAREAID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_L68_SPECIALCONDITIONTARGET SPCON_TAR
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_L68_SPECIALCONDITIONTARGET` SPCON_TAR
         ON SPCONDTION.SPECIALCONDITIONTARGETID = SPCON_TAR.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_T8J_SPECIALCONDITIONBO SPCONDTIONBO
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_T8J_SPECIALCONDITIONBO` SPCONDTIONBO
         ON SPCONDTION.SPECIALCONDITIONBOID = SPCONDTIONBO.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_T8J_SPECIALCONDITIONTYPE SPECIALCONDITIONTYPE
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_T8J_SPECIALCONDITIONTYPE` SPECIALCONDITIONTYPE
         ON SPECIALCONDITIONTYPE.ID = SPCONDTIONBO.SPECIALCONDITIONTYPECODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_T8J_SPECIALCONDITIONLEVEL SPECIALCONDITIONLEVEL
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_T8J_SPECIALCONDITIONLEVEL` SPECIALCONDITIONLEVEL
         ON SPECIALCONDITIONLEVEL.CODE = SPCONDTIONBO.SPECIALCONDITIONLEVELCODE
     LEFT JOIN PROCESS
         ON PROCESS.PROCESSID = SCF.PROCESSID
@@ -202,7 +212,7 @@ CTE_SPECIAL_CONDITIONS AS
     LEFT JOIN PROCESS PROCESS_APPROVAL
         ON PROCESS_APPROVAL.PROCESSID = SCF.PROCESSID
         AND PROCESS_APPROVAL.ACTIVITY_LABEL = 'SC Director'
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER U
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` U
         ON U.USERNAME = SCF.UPDATEDBY
 
 ), FINAL AS
@@ -289,7 +299,7 @@ SELECT
     createdon,
     updatedon,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.special_condition_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`special_condition_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

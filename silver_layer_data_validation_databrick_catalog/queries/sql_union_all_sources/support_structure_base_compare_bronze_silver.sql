@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for support_structure_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\support_structure_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\support_structure_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from support_structure_base.sql.
+-- Standalone Databricks SQL generated from support_structure_base.sql.
 -- Final column order aligned to silver_layer_query/support_structure_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =============================================================================
    Name          : SUPPORT_STRUCTURE_BASE_OS2
@@ -71,10 +81,10 @@ SELECT
     SS.CREATEDON,
     cast(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS DBT_UPDATED_AT,
          ROW_NUMBER() OVER (PARTITION BY SS.APPLICATIONSUPPORTID ORDER BY SS.UPDATEDON DESC NULLS LAST, SS.CREATEDON DESC NULLS LAST) AS rnk
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_SUPPORTSTRUCTURE SS
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMSUPPORTTYPESUBITEM3 PTS 
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_SUPPORTSTRUCTURE` SS
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMSUPPORTTYPESUBITEM3` PTS 
 on PTS.id = SS.PROGRAMSUPPORTTYPESUBITEMID
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MM5_YESNOOPTION4 Y
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MM5_YESNOOPTION4` Y
 ON Y.ID = SS.ISELIGIBLE
 )
 SELECT
@@ -122,7 +132,7 @@ SELECT
     updatedon,
     createdon,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.support_structure_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`support_structure_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

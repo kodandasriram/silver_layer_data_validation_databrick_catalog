@@ -1,8 +1,18 @@
+-- Compare bronze-layer query output with silver-layer table output for payment_assessment_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\Direct tables\payment_assessment_base_direct.sql
+-- Silver source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\updated_silver_layer_scripts\silver_layer_query\payment_assessment_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Standalone Trino SQL generated from payment_assessment_base.sql.
+-- Standalone Databricks SQL generated from payment_assessment_base.sql.
 -- Final column order aligned to silver_layer_query/payment_assessment_base_silver_layer.sql.
--- Standalone Trino SQL converted from dbt model.
+-- Standalone Databricks SQL converted from dbt model.
 /*
  =================================================================================================
 
@@ -66,12 +76,12 @@ WITH PAYASS AS (
             PARTITION BY PayAss.PAYMENTREQUESTID
             ORDER BY act.ID
         )                                                              AS RNK
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTASSESSMENT          PayAss
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTASSESSMENTSTATUS PayAssStat
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTASSESSMENT`          PayAss
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTASSESSMENTSTATUS` PayAssStat
            ON PayAss.ASSESSMENTSTATUSID = PayAssStat.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY              act
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY`              act
            ON act.PROCESS_ID = PayAss.PROCESSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER                      U
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER`                      U
            ON act.USER_ID = U.ID
     WHERE act.USER_ID IS NOT NULL
 ),
@@ -81,12 +91,12 @@ SEND_TO_INFO AS (
         PayAss.PAYMENTREQUESTID                                        AS PAYMENTREQUESTID,
         MAX(act.CLOSED)                                                AS MAX_EXECUTE_PAYMENT_DATE,
         COUNT(*)                                                       AS NUMBER_OF_EXECUTE_PAYMENT_TRIES
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTASSESSMENT          PayAss
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_PROCESS               pro
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTASSESSMENT`          PayAss
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_PROCESS`               pro
            ON pro.TOP_PROCESS_ID = PayAss.PROCESSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY              act
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY`              act
            ON act.PROCESS_ID = pro.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_DEFINITION   actdef
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_DEFINITION`   actdef
            ON act.ACTIVITY_DEF_ID = actdef.ID
     WHERE actdef.LABEL = 'Execute Payment'
     GROUP BY
@@ -138,12 +148,12 @@ CTE_PAYMENT_REQUEST AS (
         CASE
             WHEN PayReq.CREATEDON = TIMESTAMP '1900-01-01 00:00:00'
                 THEN NULL
-            ELSE PayReq.CREATEDON + INTERVAL '3' HOUR
+            ELSE PayReq.CREATEDON + INTERVAL 3 HOURS
         END                                                            AS CREATED_ON_PAYMENT_REQUEST_GENERATED,
         CASE
             WHEN PayReq.SUBMITTEDON = TIMESTAMP '1900-01-01 00:00:00'
                 THEN NULL
-            ELSE PayReq.SUBMITTEDON + INTERVAL '3' HOUR
+            ELSE PayReq.SUBMITTEDON + INTERVAL 3 HOURS
         END                                                            AS SUBMITTED_ON_PAYMENT_REQUEST_SUBMITTED,
         PayReq_Type.LABEL                                              AS PAYMENT_TYPE,
         IBAN.IBANNUMBER                                                AS IBAN,
@@ -158,7 +168,7 @@ CTE_PAYMENT_REQUEST AS (
         CASE
             WHEN APP.APPROVEDON = TIMESTAMP '1900-01-01 00:00:00'
                 THEN NULL
-            ELSE APP.APPROVEDON + INTERVAL '3' HOUR
+            ELSE APP.APPROVEDON + INTERVAL 3 HOURS
         END                                                            AS APPROVED_ON_APPLICATION,
         APST.LABEL                                                     AS WORKFLOW_STATUS_APPLICATION,
         AppSuppWFS.LABEL                                               AS WORKFLOW_STATUS_EMPLOYEE,
@@ -171,7 +181,7 @@ CTE_PAYMENT_REQUEST AS (
         CASE
             WHEN SEND_TO_INFO.MAX_EXECUTE_PAYMENT_DATE = TIMESTAMP '1900-01-01 00:00:00'
                 THEN NULL
-            ELSE SEND_TO_INFO.MAX_EXECUTE_PAYMENT_DATE + INTERVAL '3' HOUR
+            ELSE SEND_TO_INFO.MAX_EXECUTE_PAYMENT_DATE + INTERVAL 3 HOURS
         END                                                            AS MAX_EXECUTE_PAYMENT_DATE,
         SEND_TO_INFO.NUMBER_OF_EXECUTE_PAYMENT_TRIES                   AS NUMBER_OF_EXECUTE_PAYMENT_TRIES,
         IBAN.ACCOUNTNAME                                               AS ACCOUNT_NAME,
@@ -182,48 +192,48 @@ CTE_PAYMENT_REQUEST AS (
         PayReq.updatedon,
         ROW_NUMBER() OVER (PARTITION BY PayReq.ID ORDER BY PayReq.UPDATEDON DESC NULLS LAST, PayReq.CREATEDON DESC NULLS LAST) AS rnk
 
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTREQUEST             PayReq
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTREQUEST`             PayReq
     LEFT JOIN PAYASS
            ON PAYASS.PAYMENTREQUESTID = PayReq.ID
           AND PAYASS.RNK = 1
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION           APP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION`           APP
            ON PayReq.APPLICATIONID = APP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS     APST
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS`     APST
            ON APP.APPLICATIONSTATUSID = APST.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMVERSION        PV
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMVERSION`        PV
            ON APP.PROGRAMVERSIONID = PV.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM               P
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAM`               P
            ON P.ID = PV.PROGRAMID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_INFORDIMENSIONMAPPING3 DIM
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_INFORDIMENSIONMAPPING3` DIM
            ON P.GUID = DIM.PROGRAMGUID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_WZ3_PAYMENTREQUESTSTATUS  PayReq_Stat
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_WZ3_PAYMENTREQUESTSTATUS`  PayReq_Stat
            ON PayReq.PAYMENTSTATUSID = PayReq_Stat.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_PAYMENTREQUESTTYPES   PayReq_Type
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_PAYMENTREQUESTTYPES`   PayReq_Type
            ON PayReq.PAYMENTREQUESTTYPEID = PayReq_Type.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_PAYEETYPE             PayeeType
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_PAYEETYPE`             PayeeType
            ON PayeeType.CODE = PayReq.PAYEETYPEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_IBAN                  IBAN
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_IBAN`                  IBAN
            ON PayReq.IBANID2 = IBAN.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_IBANSTATUS            IBST
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_IBANSTATUS`            IBST
            ON IBAN.IBANSTATUSID = IBST.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE       CusProf
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE`       CusProf
            ON IBAN.CUSTOMERPROFILEID = CusProf.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER              Cus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`              Cus
            ON CusProf.CUSTOMERID = Cus.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL            IND
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL`            IND
            ON CusProf.CUSTOMERID = IND.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY               CMP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY`               CMP
            ON CusProf.CUSTOMERID = CMP.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT    APPSUP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORT`    APPSUP
            ON APPSUP.APPLICATIONID = PayReq.APPLICATIONID
           AND APPSUP.ACTIVESTATUSID = 'ACT'
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORTSTATUS AppSuppWFS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORTSTATUS` AppSuppWFS
            ON AppSuppWFS.CODE = APPSUP.APPLICATIONSUPPORTSTATUSID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_EMPLOYEE              Emp
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_EMPLOYEE`              Emp
            ON APPSUP.ID = Emp.APPLICATIONSUPPORTID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER              Vendor_CUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`              Vendor_CUS
            ON Vendor_CUS.ID = Emp.EMPLOYERID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY               Vendor_CMP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY`               Vendor_CMP
            ON Vendor_CUS.ID = Vendor_CMP.ID
     LEFT JOIN SEND_TO_INFO
            ON SEND_TO_INFO.PAYMENTREQUESTID = PayReq.ID
@@ -354,7 +364,7 @@ SELECT
     is_deleted,
     source_system_name,
     dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.payment_assessment_base
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`payment_assessment_base`
 ),
 
 bronze_columns(column_position, column_name) AS (

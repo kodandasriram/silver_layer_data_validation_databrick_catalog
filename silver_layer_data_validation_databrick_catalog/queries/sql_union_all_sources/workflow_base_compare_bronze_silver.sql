@@ -1,13 +1,63 @@
+-- Compare bronze-layer query output with silver-layer table output for workflow_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\workflow_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\workflow_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for workflow_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: workflow_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for workflow_base.
+Column order and typed NULL placeholders follow dbt model: workflow_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH workflow_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
 /*
  =================================================================================================
+
+Name        : WORKFLOW_BASE
+Description : This model consolidates and standardizes amendment-related attributes
+              from MIS,OS1 and OS2 base models into a unified schema. It aligns column
+              structures across both sources using NULL placeholders where attributes
+              are not available and combines the datasets using UNION ALL.
+
+              The model ensures consistent column naming and structure for downstream
+              consumption in the Silver Layer.
+
+Source Tables : workflow_base_os2
+                workflow_base_os1
+				        workflow_base_mis
+				
+
+Target Table : WORKFLOW_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Vignesh  | Initial version
+
+================================================================================================= 
+*/
+
+
+
+-- =========================================================================
+-- os2
+-- =========================================================================
+WITH
+    workflow_base_os2 AS (
+/* =================================================================================================
 
 Name        : workflow_base_os2
 Description : This model consolidates and standardizes application support,
@@ -28,15 +78,15 @@ Description : This model consolidates and standardizes application support,
               The model is intended for downstream Silver Layer reporting,
               operational monitoring, and analytics use cases.
 
-Source Tables : `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENT
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_PROCESS
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENTSTATUS
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORTSTATUS
-                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_AMENDMENTREQUEST
+Source Tables : `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENT`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_PROCESS`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENTSTATUS`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORT`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORTSTATUS`
+                `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_AMENDMENTREQUEST`
 
 Target Table : APPLICATION_SUPPORT_BASE
 
@@ -52,8 +102,8 @@ Version | Date       | Author   | Description
 --------------------------------------------------------------
 1.0     | 2026-05-12 | Vignesh  | Initial version
 
-================================================================================================= 
-*/
+================================================================================================= */
+
 WITH TEMPASSESSMENT2 AS (
 
     SELECT
@@ -120,32 +170,32 @@ WITH TEMPASSESSMENT2 AS (
             ORDER BY act.ID DESC
         )                                                   AS RN
 
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENT ass
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENT` ass
 
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_PROCESS pro
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_PROCESS` pro
         ON pro.TOP_PROCESS_ID = ass.PROCESSID
 
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY act
+    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY` act
         ON act.PROCESS_ID = pro.ID
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENTSTATUS AssessmentStatus
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENTSTATUS` AssessmentStatus
         ON ass.ASSESSMENTSTATUSID = AssessmentStatus.CODE
-            LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_BPM_ACTIVITY_DEFINITION  actdef 
+            LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_BPM_ACTIVITY_DEFINITION`  actdef 
      on act.Activity_Def_Id = actdef.Id 
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_HMY_ACTIVITYEXTENDED   act_ext
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_HMY_ACTIVITYEXTENDED`   act_ext
     on act_ext.ID = act.Id
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2FH_APPLICATIONASSESSMENTACTIONS  actions
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2FH_APPLICATIONASSESSMENTACTIONS`  actions
     on actions.KEY = act_ext.SELECTEDACTIONKEY
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM AssessmentTeamMOL
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` AssessmentTeamMOL
     ON AssessmentTeamMOL.ID = ass.ASSESSMENTTEAMMOL
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM AssessmentTeam
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` AssessmentTeam
         ON AssessmentTeam.ID = ass.ASSESSMENTTEAM2
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM ReviewTeam
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` ReviewTeam
         ON ReviewTeam.ID = ass.REVIEWTEAM1
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM ApproveTeam
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` ApproveTeam
         ON ApproveTeam.ID = ass.APPROVETEAM1
 )
 
@@ -262,21 +312,21 @@ SELECT
     FALSE AS is_deleted,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at 
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORT APP_SUP
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORT` APP_SUP
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_APPLICATION APP
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_APPLICATION4` APP
     ON APP_SUP.APPLICATIONID = APP.ID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS APP_STA
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` APP_STA
     ON APP_STA.CODE = APP.APPLICATIONSTATUSID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_2DA_APPLICATIONSUPPORTSTATUS APP_SUP_STA
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_2DA_APPLICATIONSUPPORTSTATUS` APP_SUP_STA
     ON APP_SUP_STA.CODE = APP_SUP.APPLICATIONSUPPORTSTATUSID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_NTP_AMENDMENTREQUEST AmendReq
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_NTP_AMENDMENTREQUEST4` AmendReq
     ON APP_SUP.AMENDMENTREQUESTID = AmendReq.ID
 
-LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_398_APPLICATIONSTATUS AmendReq_STA
+LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_398_APPLICATIONSTATUS` AmendReq_STA
     ON AmendReq.AMENDMENTSTATUSID = AmendReq_STA.CODE
 
 LEFT JOIN TEMPASSESSMENT2 asses
@@ -289,27 +339,27 @@ LEFT JOIN TEMPASSESSMENT2 asses_amed
 
 WHERE APP_SUP.ISACTIVE = TRUE
 ),
-workflow_base_os1_source AS (
+    workflow_base_os1 AS (
 /*
 ============================================================================
 silver_workflow_os1.sql
 ============================================================================
-Per-source intermediate Silver model for the Workflow domain Ã¢â‚¬â€ OS1 only.
+Per-source intermediate Silver model for the Workflow domain â€” OS1 only.
 
 The Workflow domain captures status-history events for both applications
 and payments. OS1 has only TWO event-log tables (much simpler than MIS
 which had 17), so the UNION is small.
 
 Sources (2 status-log tables):
-  Ã¢Ëœâ€¦ OSUSR_PX1_APPLICATIONSTATUSLOG  Ã¢â€ â€™ application status changes
-  Ã¢Ëœâ€¦ OSUSR_PX1_PAYMENTSTATUSLOG21    Ã¢â€ â€™ payment status changes
+  â˜… OSUSR_PX1_APPLICATIONSTATUSLOG  â†’ application status changes
+  â˜… OSUSR_PX1_PAYMENTSTATUSLOG21    â†’ payment status changes
 
 Reference SPs:
-  - RPT-164_neoTamkeen_Status_History       Ã¢â€ â€™ pivots application SH to 13
+  - RPT-164_neoTamkeen_Status_History       â†’ pivots application SH to 13
                                                 milestone columns. The pivot
                                                 is a Gold/AGG concern; Silver
                                                 preserves raw events.
-  - RPT-178_neoTamkeen_Full_Status_History  Ã¢â€ â€™ raw application SH event log
+  - RPT-178_neoTamkeen_Full_Status_History  â†’ raw application SH event log
   - RPT-187_neoTamkeen_Payment_Status_History
   - RPT-197_neoTamkeen_payment_status_history
 
@@ -317,12 +367,12 @@ Structure decision:
   - Both event log tables are UNIONed into a single Workflow Silver table.
   - Each row represents one status transition event.
   - Origin and Destination status IDs (and decoded labels) are preserved
-    so downstream models can build any milestone pivot they want Ã¢â‚¬â€ that
+    so downstream models can build any milestone pivot they want â€” that
     pivot logic does NOT belong in Silver.
 
 Reference table OSUSR_PX1_APPLICATIONSTATUS holds all status labels for
 applications. OSUSR_PX1_PAYMENTREQUESTSTATUS holds all status labels for
-payments. Both are joined inline (twice each Ã¢â‚¬â€ once for origin, once for
+payments. Both are joined inline (twice each â€” once for origin, once for
 destination) so the Silver row is self-describing.
 
 Cross-domain note: parent_application_id and parent_payment_id are kept
@@ -352,7 +402,7 @@ SELECT
     AppLog.APPLICATIONID                                                  AS parent_application_id,
     CAST(NULL AS BIGINT)                                                  AS parent_payment_id,
 
-    -- Status transition: origin Ã¢â€ â€™ destination
+    -- Status transition: origin â†’ destination
     AppLog.ORIGINSTATUS                                                   AS origin_status_id,
     Org.LABEL                                                             AS origin_status_label,
     AppLog.DESTINATIONSTATUS                                              AS destination_status_id,
@@ -374,18 +424,18 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUSLOG AppLog
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATION App
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUSLOG` AppLog
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATION` App
        ON App.ID = AppLog.APPLICATIONID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER usr
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` usr
        ON usr.ID = AppLog.USERID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUS Cur
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUS` Cur
        ON Cur.ID = App.APPLICATIONSTATUSID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUS Org
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUS` Org
        ON Org.ID = AppLog.ORIGINSTATUS
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATIONSTATUS Dst
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATIONSTATUS` Dst
        ON Dst.ID = AppLog.DESTINATIONSTATUS
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION UsrExt
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` UsrExt
        ON UsrExt.USERID = usr.ID
 
 
@@ -408,7 +458,7 @@ SELECT
 
     -- Status transition
     -- OS1's payment log only carries DESTINATIONSTATUS-equivalent (PAYMENTREQUESTSTATUSID
-    -- on the log row). Origin is implicit Ã¢â‚¬â€ the previous event's destination Ã¢â‚¬â€ so we
+    -- on the log row). Origin is implicit â€” the previous event's destination â€” so we
     -- leave origin NULL here. If origin tracking is needed downstream, derive via
     -- LAG() over the event stream at Gold/AGG level.
     CAST(NULL AS BIGINT)                                                  AS origin_status_id,
@@ -432,77 +482,61 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTSTATUSLOG PayLog
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENT pay
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTSTATUSLOG` PayLog
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENT` pay
        ON pay.ID = PayLog.PAYMENTID
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_APPLICATION app
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_APPLICATION` app
        ON app.ID = pay.APPLICATIONID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTREQUESTSTATUS PaySts
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTREQUESTSTATUS` PaySts
        ON PaySts.ID = PayLog.PAYMENTREQUESTSTATUSID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_PAYMENTREQUESTSTATUS PaySts_Cur
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_PAYMENTREQUESTSTATUS` PaySts_Cur
        ON PaySts_Cur.ID = pay.PAYMENTREQUESTSTATUSID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER usr_c
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` usr_c
        ON usr_c.ID = PayLog.CREATEDBY
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION UsrExt
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` UsrExt
        ON UsrExt.USERID = usr_c.ID
 ),
-workflow_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-)
+    workflow_base_mis AS (
 /*
 ============================================================================
 silver_workflow_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the Workflow domain Ã¢â‚¬â€ MIS only.
+Per-source intermediate Silver model for the Workflow domain â€” MIS only.
 
 The Workflow domain captures status-history events across all application
 sub-types in MIS. Each application sub-type (Individual, BD, Wage Subsidy,
 Training Enrollment, Job Application, BC Support, ES Monitoring, Site Visit,
 etc.) has its own dedicated status-history table.
 
-These 17 SH tables are PARALLEL entities Ã¢â‚¬â€ each application sub-type writes
+These 17 SH tables are PARALLEL entities â€” each application sub-type writes
 to its own SH table independently. They are UNIONed (not joined) into a
 single Workflow domain table.
 
 Sources (17 status-history tables):
-  Ã¢Ëœâ€¦ mis_individualapplicationstatushistory          Ã¢â€ â€™ Individual Applications
-  Ã¢Ëœâ€¦ tmkn_appsh                                      Ã¢â€ â€™ Business Development
-  Ã¢Ëœâ€¦ tws_employeeapplication_sh                      Ã¢â€ â€™ TWS Employee Application
-  Ã¢Ëœâ€¦ tws_wagesubsidy_sh                              Ã¢â€ â€™ TWS Wage Subsidy
-  Ã¢Ëœâ€¦ tws_wagesincrement_sh                           Ã¢â€ â€™ TWS Wage Increment
-  Ã¢Ëœâ€¦ tws_wagepaymentrequest_sh                       Ã¢â€ â€™ TWS Wage Payment Request
-  Ã¢Ëœâ€¦ tws_trainingenrollment_sh                       Ã¢â€ â€™ TWS Training Enrollment
-  Ã¢Ëœâ€¦ tws_trainingenrollmentpaymentrequest_sh         Ã¢â€ â€™ TWS Training Payment Request
-  Ã¢Ëœâ€¦ tws_twsapplicationformhistorystatus             Ã¢â€ â€™ TWS Application Form
-  Ã¢Ëœâ€¦ tws_twsjobapplicationstatushistory              Ã¢â€ â€™ TWS Job Application
-  Ã¢Ëœâ€¦ tmkn_amendreqsh                                 Ã¢â€ â€™ ES Amendment Request
-  Ã¢Ëœâ€¦ tmkn_businesscontinuitysupportapplicationsh     Ã¢â€ â€™ BC Support Application
-  Ã¢Ëœâ€¦ tmkn_monitoringstatushistory                    Ã¢â€ â€™ ES Monitoring
-  Ã¢Ëœâ€¦ tmkn_svsh                                       Ã¢â€ â€™ Site Visit
-  Ã¢Ëœâ€¦ tmkn_espayment_sh                               Ã¢â€ â€™ ES Payment
-  Ã¢Ëœâ€¦ mis_paymentrequeststatushistory                 Ã¢â€ â€™ Individual Payment Request
-  Ã¢Ëœâ€¦ mis_finshceme_sh                                Ã¢â€ â€™ Tamweel/Riyadat Financial Scheme
+  â˜… mis_individualapplicationstatushistory          â†’ Individual Applications
+  â˜… tmkn_appsh                                      â†’ Business Development
+  â˜… tws_employeeapplication_sh                      â†’ TWS Employee Application
+  â˜… tws_wagesubsidy_sh                              â†’ TWS Wage Subsidy
+  â˜… tws_wagesincrement_sh                           â†’ TWS Wage Increment
+  â˜… tws_wagepaymentrequest_sh                       â†’ TWS Wage Payment Request
+  â˜… tws_trainingenrollment_sh                       â†’ TWS Training Enrollment
+  â˜… tws_trainingenrollmentpaymentrequest_sh         â†’ TWS Training Payment Request
+  â˜… tws_twsapplicationformhistorystatus             â†’ TWS Application Form
+  â˜… tws_twsjobapplicationstatushistory              â†’ TWS Job Application
+  â˜… tmkn_amendreqsh                                 â†’ ES Amendment Request
+  â˜… tmkn_businesscontinuitysupportapplicationsh     â†’ BC Support Application
+  â˜… tmkn_monitoringstatushistory                    â†’ ES Monitoring
+  â˜… tmkn_svsh                                       â†’ Site Visit
+  â˜… tmkn_espayment_sh                               â†’ ES Payment
+  â˜… mis_paymentrequeststatushistory                 â†’ Individual Payment Request
+  â˜… mis_finshceme_sh                                â†’ Tamweel/Riyadat Financial Scheme
 
 Canonical column shape (every UNION branch produces the same shape):
   - workflow_subtype          : identifier of which SH table the row came from
   - mis_source_table          : actual table name (denormalised metadata)
   - sh_id                     : PK of the SH row
   - parent_application_id     : FK back to the parent entity (different column
-                                name in each table Ã¢â‚¬â€ aliased to a uniform name here)
+                                name in each table â€” aliased to a uniform name here)
   - status_report_id          : raw int code (option-set ID) for the status
   - status_report_name        : decoded option-set label
   - created_on / created_by   : when and who created the SH record
@@ -511,10 +545,10 @@ Canonical column shape (every UNION branch produces the same shape):
 
 Every SH table provides at least the parent FK, status report, created_on,
 and created_by. Some tables carry additional fields (transaction_date,
-remarks, next_step) Ã¢â‚¬â€ preserved as branch-specific columns where present
+remarks, next_step) â€” preserved as branch-specific columns where present
 and NULL-padded in branches that don't have them.
 
-Cleansing only Ã¢â‚¬â€ no business logic. The unified Silver layer downstream
+Cleansing only â€” no business logic. The unified Silver layer downstream
 will use this for cross-domain workflow analytics (e.g., "how long did
 each application spend in 'Send for Analysis' state" across all sub-types).
 ============================================================================
@@ -533,12 +567,44 @@ SELECT
     CAST(sh.mis_indiviualapplicationid AS STRING)                       AS parent_application_id,
 
     sh.mis_statusreport                                                  AS status_report_id,
-    CASE WHEN sh.mis_statusreport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_individualapplicationstatushistory') || '|' || lower('mis_statusreport') || '|' || CAST(sh.mis_statusreport AS STRING)) END AS status_report_name,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_individualapplicationstatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('mis_statusreport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.mis_statusreport AS STRING)
+
+) AS status_report_name,
 
     sh.createdon                                                         AS created_on,
     sh.createdby                                                  AS created_by,
 
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_individualapplicationstatushistory') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_individualapplicationstatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+) AS state,
     CAST(NULL AS STRING)                                                AS workflow_status,
     CAST(NULL AS TIMESTAMP)                                              AS transaction_date,
     CAST(NULL AS STRING)                                                AS remarks,
@@ -556,7 +622,7 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_INDIVIDUALAPPLICATIONSTATUSHISTORYBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_INDIVIDUALAPPLICATIONSTATUSHISTORYBASE` sh
 
 UNION ALL
 
@@ -572,12 +638,44 @@ SELECT
     CAST(sh.tmkn_ref AS STRING)                                         AS parent_application_id,
 
     sh.tmkn_statusreport                                                 AS status_report_id,
-    CASE WHEN sh.tmkn_statusreport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_appsh') || '|' || lower('tmkn_statusreport') || '|' || CAST(sh.tmkn_statusreport AS STRING)) END AS status_report_name,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_appsh')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_statusreport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tmkn_statusreport AS STRING)
+
+) AS status_report_name,
 
     sh.createdon                                                         AS created_on,
     sh.createdby                                                     AS created_by,
 
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_appsh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END    AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_appsh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+)    AS state,
     CAST(NULL AS STRING)                                                AS workflow_status,
     sh.tmkn_meetingdate                                                  AS transaction_date,
     CAST(NULL AS STRING)                                                AS remarks,
@@ -593,7 +691,7 @@ SELECT
 
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_APPSHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_APPSHBASE` sh
 
 UNION ALL
 
@@ -608,10 +706,42 @@ SELECT
     CAST(sh.tws_employee_application_reference AS STRING),
 
     sh.tws_status_report,
-    CASE WHEN sh.tws_status_report IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_employeeapplication_sh') || '|' || lower('tws_status_report') || '|' || CAST(sh.tws_status_report AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_employeeapplication_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tws_status_report')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_status_report AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_employeeapplication_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_employeeapplication_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -623,7 +753,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_EMPLOYEEAPPLICATION_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_EMPLOYEEAPPLICATION_SHBASE` sh
 
 UNION ALL
 
@@ -638,10 +768,42 @@ SELECT
     CAST(sh.tws_wage_subsidy_reference AS STRING),
 
     sh.tws_status_report,
-    CASE WHEN sh.tws_status_report IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy_sh') || '|' || lower('tws_status_report') || '|' || CAST(sh.tws_status_report AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tws_status_report')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_status_report AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesubsidy_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesubsidy_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -653,7 +815,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGESUBSIDY_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGESUBSIDY_SHBASE` sh
 
 UNION ALL
 
@@ -668,10 +830,42 @@ SELECT
     CAST(sh.tws_wage_increment_reference AS STRING),
 
     sh.tws_status_report,
-    CASE WHEN sh.tws_status_report IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesincrement_sh') || '|' || lower('tws_status_report') || '|' || CAST(sh.tws_status_report AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesincrement_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tws_status_report')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_status_report AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagesincrement_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagesincrement_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -683,7 +877,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGESINCREMENT_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGESINCREMENT_SHBASE` sh
 
 UNION ALL
 
@@ -698,10 +892,42 @@ SELECT
     CAST(sh.tws_wage_payment_request_reference AS STRING),
 
     sh.tws_status_report,
-    CASE WHEN sh.tws_status_report IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagepaymentrequest_sh') || '|' || lower('tws_status_report') || '|' || CAST(sh.tws_status_report AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagepaymentrequest_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tws_status_report')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_status_report AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_wagepaymentrequest_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_wagepaymentrequest_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING),
     sh.tmkn_transactiondate,
     CAST(NULL AS STRING), CAST(NULL AS STRING),
@@ -715,7 +941,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_WAGEPAYMENTREQUEST_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_WAGEPAYMENTREQUEST_SHBASE` sh
 
 UNION ALL
 
@@ -730,10 +956,42 @@ SELECT
     CAST(sh.tws_training_enrollment_reference AS STRING),
 
     sh.tws_status_report,
-    CASE WHEN sh.tws_status_report IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollment_sh') || '|' || lower('tws_status_report') || '|' || CAST(sh.tws_status_report AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollment_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tws_status_report')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_status_report AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollment_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollment_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -745,7 +1003,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TRAININGENROLLMENT_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TRAININGENROLLMENT_SHBASE` sh
 
 UNION ALL
 
@@ -760,10 +1018,42 @@ SELECT
     CAST(sh.tws_training_enrol_pay_req_reference AS STRING),
 
     sh.tws_status_report,
-    CASE WHEN sh.tws_status_report IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollmentpaymentrequest_sh') || '|' || lower('tws_status_report') || '|' || CAST(sh.tws_status_report AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollmentpaymentrequest_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tws_status_report')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_status_report AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_trainingenrollmentpaymentrequest_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_trainingenrollmentpaymentrequest_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING),
     sh.tmkn_transactiondate,
     CAST(NULL AS STRING), CAST(NULL AS STRING),
@@ -777,7 +1067,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TRAININGENROLLMENTPAYMENTREQUEST_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TRAININGENROLLMENTPAYMENTREQUEST_SHBASE` sh
 
 UNION ALL
 
@@ -792,10 +1082,42 @@ SELECT
     CAST(sh.tws_applicationform AS STRING),
 
     sh.tws_workflowstatus,
-    CASE WHEN sh.tws_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_twsapplicationformhistorystatus') || '|' || lower('tws_WorkflowStatus') || '|' || CAST(sh.tws_workflowstatus AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_twsapplicationformhistorystatus')
+
+      AND LOWER(sm.attributename) = LOWER('tws_WorkflowStatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_workflowstatus AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_twsapplicationformhistorystatus') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_twsapplicationformhistorystatus')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -807,7 +1129,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TWSAPPLICATIONFORMHISTORYSTATUSBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TWSAPPLICATIONFORMHISTORYSTATUSBASE` sh
 
 UNION ALL
 
@@ -822,10 +1144,42 @@ SELECT
     CAST(sh.tws_jobapplication AS STRING),
 
     sh.tws_statusreport,
-    CASE WHEN sh.tws_statusreport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_twsjobapplicationstatushistory') || '|' || lower('tws_StatusReport') || '|' || CAST(sh.tws_statusreport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_twsjobapplicationstatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('tws_StatusReport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tws_statusreport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tws_twsjobapplicationstatushistory') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tws_twsjobapplicationstatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -837,7 +1191,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TWS_TWSJOBAPPLICATIONSTATUSHISTORYBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TWS_TWSJOBAPPLICATIONSTATUSHISTORYBASE` sh
 
 UNION ALL
 
@@ -852,13 +1206,61 @@ SELECT
     CAST(sh.tmkn_ref AS STRING),
 
     sh.tmkn_statusreport,
-    CASE WHEN sh.tmkn_statusreport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_amendreqsh') || '|' || lower('tmkn_statusreport') || '|' || CAST(sh.tmkn_statusreport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_amendreqsh')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_statusreport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tmkn_statusreport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_amendreqsh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_amendreqsh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP),
     sh.tmkn_remarks,
-    CASE WHEN sh.tmkn_nextstep IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_amendreqsh') || '|' || lower('tmkn_nextstep') || '|' || CAST(sh.tmkn_nextstep AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_amendreqsh')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_nextstep')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tmkn_nextstep AS STRING)
+
+),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
     CAST(NULL AS DECIMAL(18,2))  AS tmkn_consumed,
@@ -869,7 +1271,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_AMENDREQSHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_AMENDREQSHBASE` sh
 
 UNION ALL
 
@@ -887,7 +1289,23 @@ SELECT
     CAST(null AS STRING), 
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_businesscontinuitysupportapplicationsh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_businesscontinuitysupportapplicationsh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(sh.tmkn_businesssector AS STRING)       AS tmkn_businesssector,
     CAST(sh.tmkn_submittedon AS TIMESTAMP)        AS tmkn_submittedon,
@@ -900,7 +1318,7 @@ SELECT
     
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_BUSINESSCONTINUITYSUPPORTAPPLICATION sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_BUSINESSCONTINUITYSUPPORTAPPLICATION` sh
 
 UNION ALL
 
@@ -915,10 +1333,42 @@ SELECT
     CAST(sh.tmkn_ref AS STRING),
 
     sh.tmkn_StatusReport,
-    CASE WHEN sh.tmkn_StatusReport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_monitoringstatushistory') || '|' || lower('tmkn_StatusReport') || '|' || CAST(sh.tmkn_StatusReport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_monitoringstatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_StatusReport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tmkn_StatusReport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_monitoringstatushistory') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_monitoringstatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -930,7 +1380,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_MONITORINGSTATUSHISTORYBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_MONITORINGSTATUSHISTORYBASE` sh
 
 UNION ALL
 
@@ -945,10 +1395,42 @@ SELECT
     CAST(sh.tmkn_ref AS STRING),
 
     sh.tmkn_StatusReport,
-    CASE WHEN sh.tmkn_StatusReport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_svsh') || '|' || lower('tmkn_StatusReport') || '|' || CAST(sh.tmkn_StatusReport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_svsh')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_StatusReport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tmkn_StatusReport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_svsh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_svsh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -960,7 +1442,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_SVSHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_SVSHBASE` sh
 
 UNION ALL
 
@@ -975,10 +1457,42 @@ SELECT
     CAST(sh.tmkn_parentref AS STRING),
 
     sh.tmkn_statusreport,
-    CASE WHEN sh.tmkn_statusreport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_espayment_sh') || '|' || lower('tmkn_statusreport') || '|' || CAST(sh.tmkn_statusreport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_espayment_sh')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_statusreport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.tmkn_statusreport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_espayment_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_espayment_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING),
     sh.tmkn_transactiondate,
     CAST(NULL AS STRING), CAST(NULL AS STRING),
@@ -992,7 +1506,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_ESPAYMENT_SHBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_ESPAYMENT_SHBASE` sh
 
 UNION ALL
 
@@ -1007,10 +1521,42 @@ SELECT
     CAST(sh.mis_PaymentRequestId AS STRING),
 
     sh.mis_statusreport,
-    CASE WHEN sh.mis_statusreport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentrequeststatushistory') || '|' || lower('mis_statusreport') || '|' || CAST(sh.mis_statusreport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentrequeststatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('mis_statusreport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.mis_statusreport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_paymentrequeststatushistory') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_paymentrequeststatushistory')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -1022,7 +1568,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_PAYMENTREQUESTSTATUSHISTORYBASE sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_PAYMENTREQUESTSTATUSHISTORYBASE` sh
 
 UNION ALL
 
@@ -1037,10 +1583,42 @@ SELECT
     CAST(sh.mis_Ref AS STRING),
 
     sh.mis_StatusReport,
-    CASE WHEN sh.mis_StatusReport IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_finshceme_sh') || '|' || lower('mis_StatusReport') || '|' || CAST(sh.mis_StatusReport AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_finshceme_sh')
+
+      AND LOWER(sm.attributename) = LOWER('mis_StatusReport')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.mis_StatusReport AS STRING)
+
+),
 
     sh.createdon, sh.createdby,
-    CASE WHEN sh.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('mis_finshceme_sh') || '|' || lower('statecode') || '|' || CAST(sh.statecode AS STRING)) END,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('mis_finshceme_sh')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sh.statecode AS STRING)
+
+),
     CAST(NULL AS STRING), CAST(NULL AS TIMESTAMP), CAST(NULL AS STRING), CAST(NULL AS STRING),
     CAST(NULL AS STRING)        AS tmkn_businesssector,
     CAST(NULL AS TIMESTAMP)      AS tmkn_submittedon,
@@ -1051,7 +1629,7 @@ SELECT
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractstartdate,
     CAST(NULL AS TIMESTAMP)      AS tmkn_contractenddate,
     'MIS', FALSE, CURRENT_DATE, CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_FINSHCEME_SH sh
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_FINSHCEME_SH` sh
 )
 select
  cast(id_application_support as STRING) id_application_support,
@@ -1068,7 +1646,7 @@ workflow_status,
 cast(null as timestamp) as     created_on,
 cast(null as timestamp) as     event_on,
 cast(null as timestamp) as     transaction_date,
-TRY_CAST(NULLIF(CAST(user_id AS STRING), '') AS BIGINT) as user_id,
+TRY_CAST(user_id AS BIGINT) as user_id,
 cast(null as STRING) as     user_name,
 cast(null as STRING) as     created_by,
 cast(null as boolean) as     is_customer_user,
@@ -1085,47 +1663,47 @@ cast(current_date as date) as     report_date,
 dbt_updated_at,
 extract_date,
 created_on_application_support,
-TRY_CAST(NULLIF(CAST(id_amendment_request AS STRING), '') AS BIGINT) as id_amendment_request,
+TRY_CAST(id_amendment_request AS BIGINT) as id_amendment_request,
 submitted_on,
 approved_on,
 rejected_on,
 decision_on,
 workflow_status_application,
 workflow_status_application_support_detailed,
-TRY_CAST(NULLIF(CAST(tenant_id AS STRING), '') AS BIGINT) as tenant_id,
-TRY_CAST(NULLIF(CAST(activity_id AS STRING), '') AS BIGINT) as activity_id,
-TRY_CAST(NULLIF(CAST(activity_def_id AS STRING), '') AS BIGINT) as activity_def_id,
-TRY_CAST(NULLIF(CAST(activity_process_id AS STRING), '') AS BIGINT) as activity_process_id,
+TRY_CAST(tenant_id AS BIGINT) as tenant_id,
+TRY_CAST(activity_id AS BIGINT) as activity_id,
+TRY_CAST(activity_def_id AS BIGINT) as activity_def_id,
+TRY_CAST(activity_process_id AS BIGINT) as activity_process_id,
 name,
 created,
 opened,
 closed,
-TRY_CAST(NULLIF(CAST(status_id AS STRING), '') AS BIGINT) as status_id,
+TRY_CAST(status_id AS BIGINT) as status_id,
 is_running_since,
 is_running_at,
 next_run,
-TRY_CAST(NULLIF(CAST(precedent_activity_id AS STRING), '') AS BIGINT) as precedent_activity_id,
+TRY_CAST(precedent_activity_id AS BIGINT) as precedent_activity_id,
 precedent_outcome,
 due_date,
 expired,
 skipped,
-TRY_CAST(NULLIF(CAST(error_count AS STRING), '') AS BIGINT) as error_count,
+TRY_CAST(error_count AS BIGINT) as error_count,
 inbox_detail,
-TRY_CAST(NULLIF(CAST(group_id AS STRING), '') AS BIGINT) as group_id,
+TRY_CAST(group_id AS BIGINT) as group_id,
 last_error_id,
 last_modified,
-TRY_CAST(NULLIF(CAST(process_tenant_id AS STRING), '') AS BIGINT) as process_tenant_id,
-TRY_CAST(NULLIF(CAST(process_id AS STRING), '') AS BIGINT) as process_id,
+TRY_CAST(process_tenant_id AS BIGINT) as process_tenant_id,
+TRY_CAST(process_id AS BIGINT) as process_id,
 process_label,
-TRY_CAST(NULLIF(CAST(process_def_id AS STRING), '') AS BIGINT) as process_def_id,
-TRY_CAST(NULLIF(CAST(parent_process_id AS STRING), '') AS BIGINT) as parent_process_id,
-TRY_CAST(NULLIF(CAST(parent_activity_id AS STRING), '') AS BIGINT) as parent_activity_id,
-TRY_CAST(NULLIF(CAST(top_process_id AS STRING), '') AS BIGINT) as top_process_id,
-TRY_CAST(NULLIF(CAST(process_status AS STRING), '') AS BIGINT) as process_status,
+TRY_CAST(process_def_id AS BIGINT) as process_def_id,
+TRY_CAST(parent_process_id AS BIGINT) as parent_process_id,
+TRY_CAST(parent_activity_id AS BIGINT) as parent_activity_id,
+TRY_CAST(top_process_id AS BIGINT) as top_process_id,
+TRY_CAST(process_status AS BIGINT) as process_status,
 process_last_modified,
-TRY_CAST(NULLIF(CAST(process_last_modified_by AS STRING), '') AS BIGINT) as process_last_modified_by,
+TRY_CAST(process_last_modified_by AS BIGINT) as process_last_modified_by,
 process_suspended_date,
-TRY_CAST(NULLIF(CAST(process_suspended_by AS STRING), '') AS BIGINT) as process_suspended_by,
+TRY_CAST(process_suspended_by AS BIGINT) as process_suspended_by,
 action,
 activity_description,
 activity_name,
@@ -1139,7 +1717,7 @@ cast(null as STRING)       as tmkn_workflowstatus,
 cast(null as STRING)       as owneridname,
 cast(null as timestamp)     as tmkn_contractstartdate,
 cast(null as timestamp)     as tmkn_contractenddate
-from workflow_base_os2_source
+from workflow_base_os2
 
 union all
 -- =========================================================================
@@ -1148,26 +1726,26 @@ union all
 select
      cast(event_id as STRING) event_id,
     cast(parent_application_id as STRING)   as application_id,
-TRY_CAST(NULLIF(CAST(parent_payment_id AS STRING), '') AS BIGINT) as parent_payment_id,
-TRY_CAST(NULLIF(CAST(destination_status_id AS STRING), '') AS BIGINT) as destination_status_id,
+TRY_CAST(parent_payment_id AS BIGINT) as parent_payment_id,
+TRY_CAST(destination_status_id AS BIGINT) as destination_status_id,
 cast(null as bigint) as     status_report_id,
 destination_status_label,
 cast(null as STRING) as     status_report_name,
-TRY_CAST(NULLIF(CAST(origin_status_id AS STRING), '') AS BIGINT) as origin_status_id,
+TRY_CAST(origin_status_id AS BIGINT) as origin_status_id,
 origin_status_label,
 cast(null as STRING) as workflow_status_application_detailed,
 cast(null as STRING) as workflow_status,
 cast(null as timestamp) as     created_on,
 event_on,
 cast(null as timestamp) as     transaction_date,
-TRY_CAST(NULLIF(CAST(user_id AS STRING), '') AS BIGINT) as user_id,
+TRY_CAST(user_id AS BIGINT) as user_id,
 user_name,
 cast(null as STRING) as     created_by,
 is_customer_user,
 cast(null as STRING) as     remarks,
 cast(null as STRING) as     next_step,
 cast(null as STRING) as     state,
-TRY_CAST(NULLIF(CAST(current_status_id AS STRING), '') AS BIGINT) as current_status_id,
+TRY_CAST(current_status_id AS BIGINT) as current_status_id,
 current_status_label,
 workflow_subtype,
 os1_source_table,
@@ -1232,7 +1810,7 @@ cast(null as STRING)       as owneridname,
 cast(null as timestamp)     as tmkn_contractstartdate,
 cast(null as timestamp)     as tmkn_contractenddate
 
-from workflow_base_os1_source
+from workflow_base_os1
 
 union all
 
@@ -1244,7 +1822,7 @@ select
      cast(parent_application_id as STRING)  as application_id,
 cast(null as bigint),
 cast(null as bigint),
-TRY_CAST(NULLIF(CAST(status_report_id AS STRING), '') AS BIGINT) as status_report_id,
+TRY_CAST(status_report_id AS BIGINT) as status_report_id,
 cast(null as STRING) as     destination_status_label,
 status_report_name,
 cast(null as bigint) as     origin_status_id,
@@ -1326,101 +1904,102 @@ owneridname,
 tmkn_contractstartdate,
 tmkn_contractenddate
 
-from workflow_base_mis_source
+from workflow_base_mis
 ),
 
 silver_layer AS (
 SELECT
-    id_application_support,
-    application_id,
-    parent_payment_id,
-    destination_status_id,
-    status_report_id,
-    destination_status_label,
-    status_report_name,
-    origin_status_id,
-    origin_status_label,
-    workflow_status_application_detailed,
-    workflow_status,
-    created_on,
-    event_on,
-    transaction_date,
-    user_id,
-    user_name,
-    created_by,
-    is_customer_user,
-    remarks,
-    next_step,
-    state,
-    current_status_id,
-    current_status_label,
-    workflow_subtype,
-    source_table,
-    source_system_name,
-    is_deleted,
-    report_date,
-    dbt_updated_at,
-    extract_date,
-    created_on_application_support,
-    id_amendment_request,
-    submitted_on,
-    approved_on,
-    rejected_on,
-    decision_on,
-    workflow_status_application,
-    workflow_status_application_support_detailed,
-    tenant_id,
-    activity_id,
-    activity_def_id,
-    activity_process_id,
-    name,
-    created,
-    opened,
-    closed,
-    status_id,
-    is_running_since,
-    is_running_at,
-    next_run,
-    precedent_activity_id,
-    precedent_outcome,
-    due_date,
-    expired,
-    skipped,
-    error_count,
-    inbox_detail,
-    group_id,
-    last_error_id,
-    last_modified,
-    process_tenant_id,
-    process_id,
-    process_label,
-    process_def_id,
-    parent_process_id,
-    parent_activity_id,
-    top_process_id,
-    process_status,
-    process_last_modified,
-    process_last_modified_by,
-    process_suspended_date,
-    process_suspended_by,
+    `id_application_support`,
+    `application_id`,
+    `parent_payment_id`,
+    `destination_status_id`,
+    `status_report_id`,
+    `destination_status_label`,
+    `status_report_name`,
+    `origin_status_id`,
+    `origin_status_label`,
+    `workflow_status_application_detailed`,
+    `workflow_status`,
+    `created_on`,
+    `event_on`,
+    `transaction_date`,
+    `user_id`,
+    `user_name`,
+    `created_by`,
+    `is_customer_user`,
+    `remarks`,
+    `next_step`,
+    `state`,
+    `current_status_id`,
+    `current_status_label`,
+    `workflow_subtype`,
+    `source_table`,
+    `source_system_name`,
+    `is_deleted`,
+    `report_date`,
+    `dbt_updated_at`,
+    `extract_date`,
+    `created_on_application_support`,
+    `id_amendment_request`,
+    `submitted_on`,
+    `approved_on`,
+    `rejected_on`,
+    `decision_on`,
+    `workflow_status_application`,
+    `workflow_status_application_support_detailed`,
+    `tenant_id`,
+    `activity_id`,
+    `activity_def_id`,
+    `activity_process_id`,
+    `name`,
+    `created`,
+    `opened`,
+    `closed`,
+    `status_id`,
+    `is_running_since`,
+    `is_running_at`,
+    `next_run`,
+    `precedent_activity_id`,
+    `precedent_outcome`,
+    `due_date`,
+    `expired`,
+    `skipped`,
+    `error_count`,
+    `inbox_detail`,
+    `group_id`,
+    `last_error_id`,
+    `last_modified`,
+    `process_tenant_id`,
+    `process_id`,
+    `process_label`,
+    `process_def_id`,
+    `parent_process_id`,
+    `parent_activity_id`,
+    `top_process_id`,
+    `process_status`,
+    `process_last_modified`,
+    `process_last_modified_by`,
+    `process_suspended_date`,
+    `process_suspended_by`,
     `action`,
-    activity_description,
-    activity_name,
-    amendment_request_id,
-    team,
-    tmkn_businesssector,
-    tmkn_submittedon,
-    tmkn_consumed,
-    tmkn_remaining,
-    tmkn_workflowstatus,
-    owneridname,
-    tmkn_contractstartdate,
-    tmkn_contractenddate
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.workflow_base
+    `activity_description`,
+    `activity_name`,
+    `amendment_request_id`,
+    `team`,
+    `tmkn_businesssector`,
+    `tmkn_submittedon`,
+    `tmkn_consumed`,
+    `tmkn_remaining`,
+    `tmkn_workflowstatus`,
+    `owneridname`,
+    `tmkn_contractstartdate`,
+    `tmkn_contractenddate`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`workflow_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'id_application_support'),
         (2, 'application_id'),
         (3, 'parent_payment_id'),
@@ -1506,10 +2085,12 @@ bronze_columns(column_position, column_name) AS (
         (83, 'owneridname'),
         (84, 'tmkn_contractstartdate'),
         (85, 'tmkn_contractenddate')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'id_application_support'),
         (2, 'application_id'),
         (3, 'parent_payment_id'),
@@ -1595,6 +2176,7 @@ silver_columns(column_position, column_name) AS (
         (83, 'owneridname'),
         (84, 'tmkn_contractstartdate'),
         (85, 'tmkn_contractenddate')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

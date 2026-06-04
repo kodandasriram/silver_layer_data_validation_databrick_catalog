@@ -1,13 +1,62 @@
+-- Compare bronze-layer query output with silver-layer table output for program_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\program_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\program_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for program_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: program_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for program_base.
+Column order and typed NULL placeholders follow dbt model: program_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH program_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
 /*
  =================================================================================================
+
+Name        : PROGRAM_BASE
+Description : This model consolidates and standardizes amendment-related attributes
+              from MIS and OS2 base models into a unified schema. It aligns column
+              structures across both sources using NULL placeholders where attributes
+              are not available and combines the datasets using UNION ALL.
+
+              The model ensures consistent column naming and structure for downstream
+              consumption in the Silver Layer.
+
+Source Tables : program_base_os2
+                program_base_mis
+
+Target Table : PROGRAM_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Elavarasi  | Initial version
+
+================================================================================================= 
+*/
+
+
+
+
+-- =========================================================================
+-- OS2 PROGRAM (program_base_os2)
+-- =========================================================================
+WITH
+    program_base_os2 AS (
+/* =================================================================================================
 
 Name        : PROGRAM_BASE_OS2
 Description : This model extracts and transforms program-related attributes
@@ -34,8 +83,8 @@ Version | Date       | Author   | Description
 --------------------------------------------------------------
 1.0     | 2026-03-24 | Kaviya | Initial version
 
-================================================================================================= 
-*/
+================================================================================================= */
+
 SELECT
 	A.id,
     B.LABEL AS programstatus,
@@ -58,46 +107,30 @@ SELECT
     FALSE as is_deleted,
    'NEO2' AS source_system_name,
    CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAM A
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMSTATUS B
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAM` A
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMSTATUS` B
        ON A.PROGRAMSTATUSID = B.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_3QQ_PROGRAMGROUP C
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_3QQ_PROGRAMGROUP` C
        ON A.PROGRAMGROUPID = C.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERTYPE D
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERTYPE` D
        ON A.CUSTOMERTYPEID = D.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_PROFILETYPE E
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_PROFILETYPE` E
        ON A.PROFILETYPEID = E.CODE
 ),
-program_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-)
+    program_base_mis AS (
 /*
 ============================================================================
 silver_program_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the Program domain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â MIS only.
+Per-source intermediate Silver model for the Program domain â€” MIS only.
 
 Sources:
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ mis_product       ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â product/program reference for Individual Applications
+  â˜… mis_product       â€” product/program reference for Individual Applications
                          (used in RPT-058, RPT-059)
-  ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦ tmkn_tapproduct   ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â TAP product reference for ES Items
+  â˜… tmkn_tapproduct   â€” TAP product reference for ES Items
                          (used in RPT-032)
 
-These two tables are PARALLEL program/product reference entities ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â not
+These two tables are PARALLEL program/product reference entities â€” not
 related to each other. They serve different application contexts:
   - mis_product: keyed by mis_productId, used as FK from mis_individualapplication
   - tmkn_tapproduct: keyed by tmkn_tapproductId, used as FK from tmkn_esitems
@@ -115,7 +148,7 @@ by the SPs we analysed.
 */
 
 -- ============================================================================
--- mis_product ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Individual application product reference
+-- mis_product â€” Individual application product reference
 -- ============================================================================
 SELECT
     'mis_product' AS mis_source_table,
@@ -135,14 +168,14 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.MIS_PRODUCTBASE prod
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`MIS_PRODUCTBASE` prod
 
 
 UNION ALL
 
 
 -- ============================================================================
--- tmkn_tapproduct ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ES Items product reference
+-- tmkn_tapproduct â€” ES Items product reference
 -- ============================================================================
 SELECT
     'tmkn_tapproduct' AS mis_source_table,
@@ -155,7 +188,23 @@ SELECT
     --tap.tmkn_code                                        AS tap_program_code,
     CAST(NULL AS STRING)                                AS tap_program_code,
     tap.tmkn_description                                 AS tap_program_description,
-    CASE WHEN tap.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_tapproduct') || '|' || lower('statuscode') || '|' || CAST(tap.statuscode AS STRING)) END  AS tap_program_status,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_tapproduct')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(tap.statuscode AS STRING)
+
+)  AS tap_program_status,
 
     -- Standard trailing audit columns
     'MIS' AS source_system_name,
@@ -163,7 +212,7 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_TAPPRODUCTBASE tap
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_TAPPRODUCTBASE` tap
 )
 SELECT
     source_system_name,
@@ -192,7 +241,7 @@ SELECT
     CAST(NULL AS STRING) AS source_table,
     dbt_updated_at 
 
-from program_base_os2_source
+FROM program_base_os2
 
 UNION ALL
 
@@ -226,70 +275,42 @@ SELECT
     mis_source_table AS source_table,
     dbt_updated_at
 
-from program_base_mis_source
+FROM program_base_mis
 ),
 
 silver_layer AS (
 SELECT
-    source_system_name,
-    program_id,
-    program_name,
-    tap_program_code,
-    tap_program_description,
-    program_status,
-    program_group,
-    program_version_id,
-    customer_type,
-    profile_type,
-    reference,
-    initials,
-    description,
-    is_special_program,
-    cancel_reason,
-    active_date,
-    end_date,
-    cmsprogram_en,
-    cmsprogram_ar,
-    is_show_interest_enabled,
-    program_minor_version_id,
-    is_deleted,
-    report_date,
-    source_table,
-    dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.program_base
+    `source_system_name`,
+    `program_id`,
+    `program_name`,
+    `tap_program_code`,
+    `tap_program_description`,
+    `program_status`,
+    `program_group`,
+    `program_version_id`,
+    `customer_type`,
+    `profile_type`,
+    `reference`,
+    `initials`,
+    `description`,
+    `is_special_program`,
+    `cancel_reason`,
+    `active_date`,
+    `end_date`,
+    `cmsprogram_en`,
+    `cmsprogram_ar`,
+    `is_show_interest_enabled`,
+    `program_minor_version_id`,
+    `is_deleted`,
+    `report_date`,
+    `source_table`,
+    `dbt_updated_at`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`program_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
-        (1, 'source_system_name'),
-        (2, 'program_id'),
-        (3, 'program_name'),
-        (4, 'tap_program_code'),
-        (5, 'tap_program_description'),
-        (6, 'program_status'),
-        (7, 'program_group'),
-        (8, 'program_version_id'),
-        (9, 'customer_type'),
-        (10, 'profile_type'),
-        (11, 'reference'),
-        (12, 'initials'),
-        (13, 'description'),
-        (14, 'is_special_program'),
-        (15, 'cancel_reason'),
-        (16, 'active_date'),
-        (17, 'end_date'),
-        (18, 'cms_program_en'),
-        (19, 'cms_program_ar'),
-        (20, 'is_show_interest_enabled'),
-        (21, 'program_minor_version_id'),
-        (22, 'is_deleted'),
-        (23, 'report_date'),
-        (24, 'source_table'),
-        (25, 'dbt_updated_at')
-),
-
-silver_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'source_system_name'),
         (2, 'program_id'),
         (3, 'program_name'),
@@ -315,6 +336,38 @@ silver_columns(column_position, column_name) AS (
         (23, 'report_date'),
         (24, 'source_table'),
         (25, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
+),
+
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
+        (1, 'source_system_name'),
+        (2, 'program_id'),
+        (3, 'program_name'),
+        (4, 'tap_program_code'),
+        (5, 'tap_program_description'),
+        (6, 'program_status'),
+        (7, 'program_group'),
+        (8, 'program_version_id'),
+        (9, 'customer_type'),
+        (10, 'profile_type'),
+        (11, 'reference'),
+        (12, 'initials'),
+        (13, 'description'),
+        (14, 'is_special_program'),
+        (15, 'cancel_reason'),
+        (16, 'active_date'),
+        (17, 'end_date'),
+        (18, 'cmsprogram_en'),
+        (19, 'cmsprogram_ar'),
+        (20, 'is_show_interest_enabled'),
+        (21, 'program_minor_version_id'),
+        (22, 'is_deleted'),
+        (23, 'report_date'),
+        (24, 'source_table'),
+        (25, 'dbt_updated_at')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (
@@ -336,6 +389,8 @@ bronze_normalized AS (
         CAST(`cancel_reason` AS STRING) AS `cancel_reason`,
         CAST(`active_date` AS STRING) AS `active_date`,
         CAST(`end_date` AS STRING) AS `end_date`,
+        CAST(`cmsprogram_en` AS STRING) AS `cmsprogram_en`,
+        CAST(`cmsprogram_ar` AS STRING) AS `cmsprogram_ar`,
         CAST(`is_show_interest_enabled` AS STRING) AS `is_show_interest_enabled`,
         CAST(`program_minor_version_id` AS STRING) AS `program_minor_version_id`,
         CAST(`is_deleted` AS STRING) AS `is_deleted`,
@@ -364,6 +419,8 @@ silver_normalized AS (
         CAST(`cancel_reason` AS STRING) AS `cancel_reason`,
         CAST(`active_date` AS STRING) AS `active_date`,
         CAST(`end_date` AS STRING) AS `end_date`,
+        CAST(`cmsprogram_en` AS STRING) AS `cmsprogram_en`,
+        CAST(`cmsprogram_ar` AS STRING) AS `cmsprogram_ar`,
         CAST(`is_show_interest_enabled` AS STRING) AS `is_show_interest_enabled`,
         CAST(`program_minor_version_id` AS STRING) AS `program_minor_version_id`,
         CAST(`is_deleted` AS STRING) AS `is_deleted`,

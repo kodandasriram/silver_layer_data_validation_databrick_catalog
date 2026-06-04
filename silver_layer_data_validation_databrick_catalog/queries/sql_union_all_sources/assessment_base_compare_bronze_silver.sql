@@ -1,13 +1,25 @@
+-- Compare bronze-layer query output with silver-layer table output for assessment_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\assessment_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\assessment_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for assessment_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: assessment_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
-
-WITH assessment_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
 /*
- =============================================================================
+Generated Databricks union layer for assessment_base.
+Column order and typed NULL placeholders follow dbt model: assessment_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
+
+WITH
+    assessment_base_os2 AS (
+/* =============================================================================
    Name          : ASSESSMENT_BASE
    Description   : This model extracts and transforms assessment-level data
                    from the NEO2 (OS2) Bronze Layer and loads it into the
@@ -70,8 +82,8 @@ WITH assessment_base_os2_source AS (
    ---------------------------------------------------------------------------
    1.0      | 2026-05-12   | siva       | Initial Development
    ---------------------------------------------------------------------------
-============================================================================= 
-*/
+============================================================================= */
+
 
 with CTE_OSUSR_1AT_ASSESSMENT AS
 (
@@ -103,20 +115,26 @@ SELECT
         ass.updatedon,
         ass.createdon,
         cast(to_utc_timestamp(current_timestamp(), current_timezone()) AS timestamp) AS dbt_updated_at,
-        ROW_NUMBER() OVER (PARTITION BY ass.id ORDER BY ass.updatedon DESC NULLS LAST, ass.createdon DESC NULLS LAST) AS rnk
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENT ass
+        ROW_NUMBER() OVER (
 
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_1AT_ASSESSMENTSTATUS  assessmentstatus
+    PARTITION BY ass.id
+
+    ORDER BY ass.updatedon DESC, ass.createdon DESC
+
+  ) AS rnk
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENT` ass
+
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_1AT_ASSESSMENTSTATUS`  assessmentstatus
         ON ass.ASSESSMENTSTATUSID = assessmentstatus.CODE
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM KT1
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` KT1
         ON  ass.ASSESSMENTTEAM1 = KT1.ID  
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM KT2
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` KT2
         ON  ass.ASSESSMENTTEAM2 = KT2.ID 
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM KT3
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` KT3
         ON  ass.REVIEWTEAM1 = KT3.ID 
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM KT4
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` KT4
         ON  ass.APPROVETEAM1 = KT4.ID 
-    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_KUO_TEAM KT5
+    LEFT join `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_KUO_TEAM` KT5
         ON  ass.ASSESSMENTTEAMMOL = KT5.ID 
 )
 SELECT id,
@@ -127,10 +145,10 @@ SELECT id,
        reviewrole,
        approverole,
        processid,
-       NULLIF(TRIM(CAST(assessmentteam1_name AS STRING)), '') AS assessmentteam1_name,
-       NULLIF(TRIM(CAST(assessmentteam2_name AS STRING)), '') AS assessmentteam2_name,
-       NULLIF(TRIM(CAST(reviewteam1_name AS STRING)), '') AS reviewteam1_name,
-       NULLIF(TRIM(CAST(approveteam1_name AS STRING)), '') AS approveteam1_name,
+       NULLIF(TRIM(assessmentteam1_name), '') AS assessmentteam1_name,
+       NULLIF(TRIM(assessmentteam2_name), '') AS assessmentteam2_name,
+       NULLIF(TRIM(reviewteam1_name), '') AS reviewteam1_name,
+       NULLIF(TRIM(approveteam1_name), '') AS approveteam1_name,
        assessmentstatusid,
        assessmentrolemol,
        assessmentteammol_name,
@@ -142,40 +160,24 @@ SELECT id,
        monitoringteam1,
        monitoringteam2,
        is_deleted,
-       UPPER(NULLIF(TRIM(CAST(SOURCE_SYSTEM_NAME AS STRING)), '')) AS source_system_name,
-       TRY_CAST(NULLIF(CAST(UPDATEDON AS STRING), '') AS TIMESTAMP) AS updatedon,
-       TRY_CAST(NULLIF(CAST(CREATEDON AS STRING), '') AS TIMESTAMP) AS createdon,
-       TRY_CAST(NULLIF(CAST(DBT_UPDATED_AT AS STRING), '') AS TIMESTAMP) AS dbt_updated_at
+       UPPER(NULLIF(TRIM(SOURCE_SYSTEM_NAME), '')) AS source_system_name,
+       TRY_CAST(UPDATEDON AS TIMESTAMP) AS updatedon,
+       TRY_CAST(CREATEDON AS TIMESTAMP) AS createdon,
+       TRY_CAST(DBT_UPDATED_AT AS TIMESTAMP) AS dbt_updated_at
 FROM CTE_OSUSR_1AT_ASSESSMENT ass
 WHERE rnk = 1
 ),
-assessment_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-),
+    assessment_base_mis AS (
 /*
 ============================================================================
 silver_assessment_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the Assessment domain Ã¢â‚¬â€ MIS only.
+Per-source intermediate Silver model for the Assessment domain â€” MIS only.
 
 Sources (Assessment domain entities):
-  Ã¢Ëœâ€¦ tmkn_sitevisit       Ã¢â‚¬â€ physical site visit records
-  Ã¢Ëœâ€¦ tmkn_virtualvisit    Ã¢â‚¬â€ virtual visit records (linked to a site visit)
-  Ã¢Ëœâ€¦ tmkn_esmonitoring    Ã¢â‚¬â€ ES (Enterprise Support) monitoring assessments
+  â˜… tmkn_sitevisit       â€” physical site visit records
+  â˜… tmkn_virtualvisit    â€” virtual visit records (linked to a site visit)
+  â˜… tmkn_esmonitoring    â€” ES (Enterprise Support) monitoring assessments
 
 Reference SPs:
   - RPT-038_ES_Site_Visits      (anchor on tmkn_sitevisit)
@@ -184,16 +186,16 @@ Reference SPs:
   - RPT-034_ES_Payment_Request  (uses tmkn_sitevisit as a reference)
 
 Structure decision:
-  - Three parallel anchor entities Ã¢â‚¬â€ UNIONed (not joined together).
+  - Three parallel anchor entities â€” UNIONed (not joined together).
   - Site visits and virtual visits are conceptually related (virtual visit
     references its parent site visit), but we keep them as separate UNION
     branches to preserve their independent lifecycles. The site_visit_id FK
     is preserved on virtual visit rows for downstream re-joining if needed.
   - tmkn_esmonitoring is a separate type of assessment (financial monitoring)
-    and shares no structural overlap with site/virtual visits Ã¢â‚¬â€ natural UNION.
+    and shares no structural overlap with site/virtual visits â€” natural UNION.
 
 Cross-domain note: RPT-037, RPT-038, and RPT-039 all join to tmkn_application
-and tmkn_company. Those joins are NOT performed here Ã¢â‚¬â€ they belong in the
+and tmkn_company. Those joins are NOT performed here â€” they belong in the
 Application and Customer Enterprise domains. Application/Company FKs are
 preserved here for downstream re-joining.
 
@@ -208,14 +210,14 @@ The assessment_subtype column identifies which sub-type each row is:
 -- ============================================================================
 -- Pre-aggregated site visit / monitoring status history (replaces SP cursor)
 -- ============================================================================
-sv_status_history AS (
+WITH sv_status_history AS (
     SELECT
         sh.tmkn_ref                                      AS reference_id,
         sh.tmkn_StatusReport                             AS status_report_id,
         COUNT(sh.tmkn_svshid)                            AS occurrence_count,
         MIN(sh.createdon)                                AS first_created_on,
         MAX(sh.createdon)                                AS last_created_on
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_SVSHBASE sh
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_SVSHBASE` sh
     WHERE sh.tmkn_ref IS NOT NULL
       AND sh.statecode = 0
     GROUP BY
@@ -230,7 +232,7 @@ mon_status_history AS (
         COUNT(sh.tmkn_monitoringstatushistoryid)         AS occurrence_count,
         MIN(sh.createdon)                                AS first_created_on,
         MAX(sh.createdon)                                AS last_created_on
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_MONITORINGSTATUSHISTORYBASE sh
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_MONITORINGSTATUSHISTORYBASE` sh
     WHERE sh.tmkn_ref IS NOT NULL
       AND sh.statecode = 0
     GROUP BY
@@ -262,11 +264,91 @@ SELECT
     CAST(NULL AS STRING)                                AS sp_name,
     -- Site visit specific fields
     sv.tmkn_sitevisitdate                                AS site_visit_date,
-     CASE WHEN sv.tmkn_type IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('tmkn_type') || '|' || CAST(sv.tmkn_type AS STRING)) END              AS site_visit_type, 
-     CASE WHEN sv.tmkn_virtuallyverified IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('tmkn_virtuallyverified') || '|' || CAST(sv.tmkn_virtuallyverified AS STRING)) END AS virtually_verified, 
-     CASE WHEN sv.mis_onhold IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('mis_onhold') || '|' || CAST(sv.mis_onhold AS STRING)) END             AS on_hold, 
-     CASE WHEN sv.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(sv.tmkn_workflowstatus AS STRING)) END    AS workflow_status, 
-     CASE WHEN sv.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_sitevisit') || '|' || lower('statecode') || '|' || CAST(sv.statecode AS STRING)) END              AS state,               
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_sitevisit')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_type')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sv.tmkn_type AS STRING)
+
+)              AS site_visit_type, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_sitevisit')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_virtuallyverified')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sv.tmkn_virtuallyverified AS STRING)
+
+) AS virtually_verified, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_sitevisit')
+
+      AND LOWER(sm.attributename) = LOWER('mis_onhold')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sv.mis_onhold AS STRING)
+
+)             AS on_hold, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_sitevisit')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sv.tmkn_workflowstatus AS STRING)
+
+)    AS workflow_status, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_sitevisit')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(sv.statecode AS STRING)
+
+)              AS state,               
     -- Status history milestones (for site visit)
     sh_submit_request.first_created_on                   AS submit_request_on,
     --sh_submit_request.first_created_by                   AS submit_request_by,
@@ -297,7 +379,7 @@ SELECT
     FALSE AS is_deleted,
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_SITEVISITBASE sv
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_SITEVISITBASE` sv
 LEFT JOIN sv_status_history sh_submit_request
        ON sh_submit_request.reference_id = sv.tmkn_sitevisitid
       AND sh_submit_request.status_report_id = 810800000  -- Submit Request
@@ -342,10 +424,42 @@ SELECT
     CAST(NULL AS STRING)                                AS site_visit_type,
     CAST(NULL AS STRING)                                AS virtually_verified,
     CAST(NULL AS STRING)                                AS on_hold,
-     CASE WHEN vv.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_virtualvisit') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(vv.tmkn_workflowstatus AS STRING)) END AS workflow_status, 
-     CASE WHEN vv.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_virtualvisit') || '|' || lower('statecode') || '|' || CAST(vv.statecode AS STRING)) END           AS state,            
+     (
 
-    -- Status history (NULL for virtual visits Ã¢â‚¬â€ they don't carry milestones in source SP)
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_virtualvisit')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(vv.tmkn_workflowstatus AS STRING)
+
+) AS workflow_status, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_virtualvisit')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(vv.statecode AS STRING)
+
+)           AS state,            
+
+    -- Status history (NULL for virtual visits â€” they don't carry milestones in source SP)
     CAST(NULL AS TIMESTAMP)                              AS submit_request_on,
     CAST(NULL AS STRING)                                AS submit_request_by, ---UNCOMMENTED
     CAST(NULL AS TIMESTAMP)                              AS submit_results_on,
@@ -376,7 +490,7 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_VIRTUALVISITBASE vv
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_VIRTUALVISITBASE` vv
 
 
 UNION ALL
@@ -412,8 +526,40 @@ SELECT
     CAST(NULL AS STRING)                                AS site_visit_type,
     CAST(NULL AS STRING)                                AS virtually_verified,
     CAST(NULL AS STRING)                                AS on_hold,
-     CASE WHEN esmon.tmkn_workflowstatus IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_esmonitoring') || '|' || lower('tmkn_workflowstatus') || '|' || CAST(esmon.tmkn_workflowstatus AS STRING)) END AS workflow_status, 
-     CASE WHEN esmon.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_esmonitoring') || '|' || lower('statecode') || '|' || CAST(esmon.statecode AS STRING)) END           AS state, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_esmonitoring')
+
+      AND LOWER(sm.attributename) = LOWER('tmkn_workflowstatus')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(esmon.tmkn_workflowstatus AS STRING)
+
+) AS workflow_status, 
+     (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_esmonitoring')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(esmon.statecode AS STRING)
+
+)           AS state, 
     -- Status history milestones for monitoring
     sh_send_sv.last_created_on                           AS submit_request_on,
     --sh_send_sv.last_created_by                           AS submit_request_by, 
@@ -448,7 +594,7 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_ESMONITORINGBASE esmon
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_ESMONITORINGBASE` esmon
 LEFT JOIN mon_status_history sh_send_sv
        ON sh_send_sv.reference_id = esmon.tmkn_esmonitoringid
       AND sh_send_sv.status_report_id = 810800011  -- Send For Site Visit
@@ -526,7 +672,7 @@ SELECT
      DBT_UPDATED_AT,
      CREATEDON,
      UPDATEDON
-from assessment_base_os2_source 
+FROM  assessment_base_os2 
 	
 UNION ALL
 
@@ -597,80 +743,81 @@ SELECT
      DBT_UPDATED_AT,
      CAST(CREATED_ON AS TIMESTAMP) AS CREATEDON,
      CAST(NULL AS TIMESTAMP) AS UPDATEDON
-from assessment_base_mis_source
+FROM  assessment_base_mis
 ),
 
 silver_layer AS (
 SELECT
-    id,
-    applicationid,
-    amendmentrequestid,
-    assessmentrole1,
-    assessmentrole2,
-    reviewrole,
-    approverole,
-    processid,
-    assessmentteam1_name,
-    assessmentteam2_name,
-    reviewteam1_name,
-    approveteam1_name,
-    assessmentrolemol,
-    assessmentteammol_name,
-    reviewrole1,
-    reviewrole2,
-    reviewteam2,
-    monitoringrole1,
-    monitoringrole2,
-    monitoringteam1,
-    monitoringteam2,
-    assessment_subtype,
-    mis_source_table,
-    assessment_id,
-    assessment_no,
-    application_id,
-    monitoring_id,
-    site_visit_parent_id,
-    company_id,
-    application_no_name,
-    monitoring_ref_name,
-    payment_ref_name,
-    owner_name,
-    sp_name,
-    site_visit_date,
-    site_visit_type,
-    virtually_verified,
-    on_hold,
-    workflow_status,
-    state,
-    submit_request_on,
-    submit_results_on,
-    close_request_on,
-    submit_request_by,
-    submit_results_by,
-    close_request_by,
-    monitoring_revenue_t1,
-    monitoring_revenue_t,
-    monitoring_profit_t1,
-    monitoring_profit_t,
-    monitoring_reward_percentage,
-    monitoring_reward_score,
-    monitoring_total_employees,
-    monitoring_bahrainis_count,
-    monitoring_non_bahrainis_count,
-    monitoring_disabled_bahrainis,
-    monitoring_eligible,
-    monitoring_audited_financial,
-    source_system_name,
-    is_deleted,
-    report_date,
-    dbt_updated_at,
-    createdon,
-    updatedon
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.assessment_base
+    `id`,
+    `applicationid`,
+    `amendmentrequestid`,
+    `assessmentrole1`,
+    `assessmentrole2`,
+    `reviewrole`,
+    `approverole`,
+    `processid`,
+    `assessmentteam1_name`,
+    `assessmentteam2_name`,
+    `reviewteam1_name`,
+    `approveteam1_name`,
+    `assessmentrolemol`,
+    `assessmentteammol_name`,
+    `reviewrole1`,
+    `reviewrole2`,
+    `reviewteam2`,
+    `monitoringrole1`,
+    `monitoringrole2`,
+    `monitoringteam1`,
+    `monitoringteam2`,
+    `assessment_subtype`,
+    `mis_source_table`,
+    `assessment_id`,
+    `assessment_no`,
+    `application_id`,
+    `monitoring_id`,
+    `site_visit_parent_id`,
+    `company_id`,
+    `application_no_name`,
+    `monitoring_ref_name`,
+    `payment_ref_name`,
+    `owner_name`,
+    `sp_name`,
+    `site_visit_date`,
+    `site_visit_type`,
+    `virtually_verified`,
+    `on_hold`,
+    `workflow_status`,
+    `state`,
+    `submit_request_on`,
+    `submit_results_on`,
+    `close_request_on`,
+    `submit_request_by`,
+    `submit_results_by`,
+    `close_request_by`,
+    `monitoring_revenue_t1`,
+    `monitoring_revenue_t`,
+    `monitoring_profit_t1`,
+    `monitoring_profit_t`,
+    `monitoring_reward_percentage`,
+    `monitoring_reward_score`,
+    `monitoring_total_employees`,
+    `monitoring_bahrainis_count`,
+    `monitoring_non_bahrainis_count`,
+    `monitoring_disabled_bahrainis`,
+    `monitoring_eligible`,
+    `monitoring_audited_financial`,
+    `source_system_name`,
+    `is_deleted`,
+    `report_date`,
+    `dbt_updated_at`,
+    `createdon`,
+    `updatedon`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`assessment_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'id'),
         (2, 'applicationid'),
         (3, 'amendmentrequestid'),
@@ -735,10 +882,12 @@ bronze_columns(column_position, column_name) AS (
         (62, 'dbt_updated_at'),
         (63, 'createdon'),
         (64, 'updatedon')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'id'),
         (2, 'applicationid'),
         (3, 'amendmentrequestid'),
@@ -803,6 +952,7 @@ silver_columns(column_position, column_name) AS (
         (62, 'dbt_updated_at'),
         (63, 'createdon'),
         (64, 'updatedon')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (

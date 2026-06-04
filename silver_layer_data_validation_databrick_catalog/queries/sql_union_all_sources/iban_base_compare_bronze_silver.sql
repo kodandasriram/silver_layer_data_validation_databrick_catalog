@@ -1,31 +1,66 @@
+-- Compare bronze-layer query output with silver-layer table output for iban_base.
+-- Validations included:
+--   1. Record counts for bronze_layer and silver_layer.
+--   2. Column counts for bronze_layer and silver_layer.
+--   3. Column name/order match flag.
+--   4. Mismatching row counts in each direction after casting all compared columns to STRING.
+--
+-- Bronze source: C:\Users\MODICHERLA\OneDrive - Hexalytics, Inc\Documents\Requirements\Silver Layer\Union All sources\Silver_layer_03-June-2026\converted db script to databricks\Databricks_union of all sources\iban_base.sql
+-- Silver source: converted db script to databricks\silver_layer scripts\iban_base_silver_layer.sql
+
 WITH
 bronze_layer AS (
--- Bronze-layer UNION ALL for iban_base across OS2, OS1, and MIS.
--- Output column order follows the dbt model: iban_base_union all.sql.
--- Source CTEs preserve the standalone source joins/functionality; the dbt union mapping supplies typed NULLs.
+/*
+Generated Databricks union layer for iban_base.
+Column order and typed NULL placeholders follow dbt model: iban_base.sql.
+Source transformations are embedded whole from the converted Databricks OS1/OS2/MIS scripts.
+dbt macros expanded to Databricks TRY_CAST / string cleanup expressions.
+*/
 
-WITH iban_base_mis_source AS (
-WITH option_set_values AS (
-    SELECT
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING) AS option_key,
-        max(sm.value) AS option_value
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.STRINGMAP sm
-    INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.ENTITYLOGICALVIEW elv
-        ON sm.objecttypecode = elv.objecttypecode
-    WHERE sm.attributevalue IS NOT NULL
-      AND sm.value IS NOT NULL
-    GROUP BY
-        lower(elv.name) || '|' || lower(sm.attributename) || '|' || CAST(sm.attributevalue AS STRING)
-),
-option_set_map AS (
-    SELECT map_from_entries(collect_list(named_struct('key', option_key, 'value', option_value))) AS option_values
-    FROM option_set_values
-)
+/*
+ =================================================================================================
+
+Name        : IBAN_BASE
+Description : This model consolidates and standardizes amendment-related attributes
+              from MIS and OS1 base models into a unified schema. It aligns column
+              structures across both sources using NULL placeholders where attributes
+              are not available and combines the datasets using UNION ALL.
+
+              The model ensures consistent column naming and structure for downstream
+              consumption in the Silver Layer.
+
+Source Tables : iban_base_mis
+                iban_base_os1
+				iban_base_os2
+
+Target Table : IBAN_BASE
+Load Type    : Full Load (Table)
+Materialized : table
+Format       : PARQUET
+Tags         : neo2, daily
+
+Revision History:
+--------------------------------------------------------------
+
+Version | Date       | Author  | Description
+--------------------------------------------------------------
+1.0     | 2026-05-13 | Kaviya  | Initial version
+
+================================================================================================= 
+*/
+
+
+
+
+
+
+WITH
+    iban_base_mis AS (
 /*
 ============================================================================
 silver_iban_mis.sql
 ============================================================================
-Per-source intermediate Silver model for the IBAN domain Ã¢â‚¬â€ MIS only.
+Per-source intermediate Silver model for the IBAN domain â€” MIS only.
 
 Source: tmkn_iban (single table, IBAN bank account reference data)
 
@@ -36,14 +71,14 @@ Reference SPs:
 
 The IBAN domain is a single-table reference domain. tmkn_iban holds bank
 account records that are linked from companies and applications. There is
-no internal entity hierarchy to join Ã¢â‚¬â€ the table sits flat.
+no internal entity hierarchy to join â€” the table sits flat.
 
 In the source SPs, tmkn_iban is JOINed FROM other domain tables (Company,
-BD Application) via the iban FK. Here we expose it standalone Ã¢â‚¬â€ downstream
+BD Application) via the iban FK. Here we expose it standalone â€” downstream
 domain tables that need iban details will JOIN to this Silver table at
 Gold/AGG time.
 
-Cleansing only Ã¢â‚¬â€ no business logic.
+Cleansing only â€” no business logic.
 ============================================================================
 */
 
@@ -65,8 +100,40 @@ SELECT
     CAST(NULL AS STRING) AS branch_name,
     CAST(NULL AS STRING) AS owner_name,
     -- Standard option-set decodes
-    CASE WHEN iban.statuscode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_iban') || '|' || lower('statuscode') || '|' || CAST(iban.statuscode AS STRING)) END  AS status_reason,
-    CASE WHEN iban.statecode IS NULL THEN NULL ELSE element_at((SELECT option_values FROM option_set_map), lower('tmkn_iban') || '|' || lower('statecode') || '|' || CAST(iban.statecode AS STRING)) END   AS state,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_iban')
+
+      AND LOWER(sm.attributename) = LOWER('statuscode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(iban.statuscode AS STRING)
+
+)  AS status_reason,
+    (
+
+    SELECT MAX(sm.value)
+
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`stringmap` sm
+
+    JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`entitylogicalview` ev
+
+      ON sm.objecttypecode = ev.objecttypecode
+
+    WHERE LOWER(ev.name) = LOWER('tmkn_iban')
+
+      AND LOWER(sm.attributename) = LOWER('statecode')
+
+      AND CAST(sm.attributevalue AS STRING) = CAST(iban.statecode AS STRING)
+
+)   AS state,
 
     -- Owner / audit
     --iban.owneridname                                     AS owner_name,
@@ -81,32 +148,32 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.TMKN_IBANBASE iban
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`TMKN_IBANBASE` iban
 ),
-iban_base_os1_source AS (
+    iban_base_os1 AS (
 /*
 ============================================================================
 silver_iban_os1.sql
 ============================================================================
-Per-source intermediate Silver model for the IBAN domain Ã¢â‚¬â€ OS1 only.
+Per-source intermediate Silver model for the IBAN domain â€” OS1 only.
 
 Source: OSUSR_PX1_IBAN (anchor)
 Reference SP: RPT-186_neoTamkeen_IBAN
 
 Lookups joined inline:
-  - OSUSR_PX1_IBANTYPE        Ã¢â€ â€™ IBAN type label (e.g., 'Personal', 'Company')
-  - OSUSR_PX1_BANK            Ã¢â€ â€™ bank name
-  - OSUSR_PX1_IBANSTATUS      Ã¢â€ â€™ workflow status label
-  - ossys_user (Ãƒâ€”2)           Ã¢â€ â€™ created-by / updated-by user names
-  - OSUSR_MKZ_USEREXTENSION   Ã¢â€ â€™ CPR number for the creating user
+  - OSUSR_PX1_IBANTYPE        â†’ IBAN type label (e.g., 'Personal', 'Company')
+  - OSUSR_PX1_BANK            â†’ bank name
+  - OSUSR_PX1_IBANSTATUS      â†’ workflow status label
+  - ossys_user (Ã—2)           â†’ created-by / updated-by user names
+  - OSUSR_MKZ_USEREXTENSION   â†’ CPR number for the creating user
 
-OS1 lookup tables don't follow the CRM option-set pattern Ã¢â‚¬â€ they are standard
+OS1 lookup tables don't follow the CRM option-set pattern â€” they are standard
 reference tables joined directly. No decode_optionset macro needed for OS1.
 
-Sentinel handling: OS1 uses '01-01-1900' as the sentinel default date Ã¢â‚¬â€ null
+Sentinel handling: OS1 uses '01-01-1900' as the sentinel default date â€” null
 those out for the date columns to avoid downstream confusion.
 
-Cleansing only Ã¢â‚¬â€ no business logic. Cross-domain references (e.g., the
+Cleansing only â€” no business logic. Cross-domain references (e.g., the
 USERID FK to ossys_user) are preserved as columns, but the user details are
 denormalised inline because RPT-186 already does that.
 ============================================================================
@@ -156,32 +223,30 @@ SELECT
     CURRENT_DATE AS report_date,
     CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP) AS dbt_updated_at
 
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_IBAN ibn
--- INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_IBANTYPE ibntyp
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_IBAN` ibn
+-- INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_IBANTYPE` ibntyp
 --        ON ibntyp.ID = ibn.IBANTYPEID
--- INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_BANK bnk
+-- INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_BANK` bnk
 --        ON bnk.ID = ibn.BANKID
--- INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_PX1_IBANSTATUS ibnSts
+-- INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_PX1_IBANSTATUS` ibnSts
 --        ON ibnSts.ID = ibn.IBANSTATUSID
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER usr_create
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` usr_create
        ON usr_create.ID = ibn.CREATEDBY
-INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSSYS_USER usr_update
+INNER JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSSYS_USER` usr_update
        ON usr_update.ID = ibn.UPDATEDBY
-LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_MKZ_USEREXTENSION UsrExt
+LEFT JOIN  `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_MKZ_USEREXTENSION` UsrExt
        ON UsrExt.USERID = usr_create.ID
 ),
-iban_base_os2_source AS (
--- Standalone Trino SQL converted from dbt model.
-/*
- =================================================================================================
-
+    iban_base_os2 AS (
+/* =================================================================================================
+ 
 Name        : IBAN_FINANCE_NTP
 Description : This model extracts and transforms IBAN and finance-related attributes
               from the NEO2 (NTP) source system Bronze Layer and loads into the
               IBAN_FINANCE target table as part of the Silver Layer data pipeline.
               It supports incremental loading with merge strategy and implements
               soft delete handling using a post-hook.
-
+ 
 Source Tables : neo2.OSUSR_TLV_IBAN
                 neo2.OSUSR_TLV_BANK
                 neo2.OSUSR_TLV_IBANSTATUS
@@ -190,22 +255,22 @@ Source Tables : neo2.OSUSR_TLV_IBAN
                 neo2.OSUSR_ZMZ_CUSTOMERTYPE
                 neo2.OSUSR_ZMZ_INDIVIDUAL
                 neo2.OSUSR_ZMZ_COMPANY
-
+ 
 Target Table : IBAN_FINANCE
 Load Type    : Incremental Load (Merge + Soft Delete)
 Materialized : incremental
 Format       : PARQUET
 Tags         : neo2, daily
-
+ 
 Revision History:
 --------------------------------------------------------------
-
+ 
 Version | Date       | Author  | Description
 --------------------------------------------------------------
 1.0     | 2026-05-11 |    Abitha     | Initial version
+ 
+================================================================================================= */
 
-================================================================================================= 
-*/
 WITH CTE_IBAN_FINANCE AS (
     SELECT
         IBAN.id,
@@ -237,7 +302,7 @@ WITH CTE_IBAN_FINANCE AS (
         CASE
             WHEN IBAN.CREATEDON = CAST('1900-01-01 00:00:00.000' AS TIMESTAMP)
             THEN NULL
-            ELSE IBAN.CREATEDON + INTERVAL '3' HOUR
+            ELSE IBAN.CREATEDON + INTERVAL 3 HOURS
         END                                                               AS createdon,
         IBAN.CREATEDBY                                                    AS created_by,
         BANK.SWIFTBANKCODE                                                AS swift_code,
@@ -248,30 +313,37 @@ WITH CTE_IBAN_FINANCE AS (
             WHEN IBAN.IBANSTATUSID = 'VER' THEN IBAN.UPDATEDON
             ELSE NULL
         END                                                               AS verified_on,
-        ROW_NUMBER() OVER (PARTITION BY IBAN.ID ORDER BY IBAN.CREATEDON DESC NULLS LAST, IBAN.UPDATEDON DESC NULLS LAST)                                                              AS rnk,
+        ROW_NUMBER() OVER (
+
+    PARTITION BY IBAN.ID
+
+    ORDER BY IBAN.CREATEDON DESC, IBAN.UPDATEDON DESC
+
+  )                                                              AS rnk,
         FALSE                                                             AS is_deleted,
         'NEO2'                                                            AS source_system_name,
         CAST(to_utc_timestamp(current_timestamp(), current_timezone()) AS TIMESTAMP)          AS dbt_updated_at
-
-    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_IBAN                          IBAN
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_BANK                     BANK
+ 
+    FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_IBAN`                          IBAN
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_BANK`                     BANK
            ON BANK.ID = IBAN.BANKID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_TLV_IBANSTATUS               IBST
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_TLV_IBANSTATUS`               IBST
            ON IBAN.IBANSTATUSID = IBST.CODE
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERPROFILE          CUSPROF
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERPROFILE`          CUSPROF
            ON CUSPROF.ID = IBAN.CUSTOMERPROFILEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMER                 CUS
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMER`                 CUS
            ON CUSPROF.CUSTOMERID = CUS.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_CUSTOMERTYPE             CusType
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_CUSTOMERTYPE`             CusType
            ON CusType.CODE = CUS.CUSTOMERTYPEID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_INDIVIDUAL               IND
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_INDIVIDUAL`               IND
            ON CUSPROF.CUSTOMERID = IND.ID
-    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.OSUSR_ZMZ_COMPANY                  CMP
+    LEFT JOIN `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-bronze`.`OSUSR_ZMZ_COMPANY`                  CMP
            ON CUSPROF.CUSTOMERID = CMP.ID
 )
-
+ 
+ 
 SELECT
-    TRY_CAST(NULLIF(CAST(id AS STRING), '') AS BIGINT)                                          AS id,
+    TRY_CAST(id AS BIGINT)                                          AS id,
     ibannumber,
     iban_status,
     customerprofileid,
@@ -294,17 +366,17 @@ SELECT
     mobile_number,
     account_name,
     bank_name,
-    TRY_CAST(NULLIF(CAST(createdon AS STRING), '') AS TIMESTAMP)                           AS createdon,
+    TRY_CAST(createdon AS TIMESTAMP)                           AS createdon,
     created_by,
     swift_code,
     bic_code,
     customer_type,
-    TRY_CAST(NULLIF(CAST(updatedon AS STRING), '') AS TIMESTAMP)                               AS updatedon,
-    TRY_CAST(NULLIF(CAST(verified_on AS STRING), '') AS TIMESTAMP)                               AS verified_on,
+    TRY_CAST(updatedon AS TIMESTAMP)                               AS updatedon,
+    TRY_CAST(verified_on AS TIMESTAMP)                               AS verified_on,
     is_deleted,
-    UPPER(NULLIF(TRIM(CAST(source_system_name AS STRING)), ''))                         AS source_system_name,
-    TRY_CAST(NULLIF(CAST(dbt_updated_at AS STRING), '') AS TIMESTAMP)                            AS dbt_updated_at
-
+    UPPER(NULLIF(TRIM(source_system_name), ''))                         AS source_system_name,
+    TRY_CAST(dbt_updated_at AS TIMESTAMP)                            AS dbt_updated_at
+ 
 FROM CTE_IBAN_FINANCE
 WHERE rnk = 1
 )
@@ -371,7 +443,7 @@ select
     cast(created_on as timestamp) as createdon,
     cast(null as timestamp) as updatedon
 
-from iban_base_mis_source
+from iban_base_mis
 
 union all
 
@@ -438,7 +510,7 @@ select
     cast(created_on as timestamp) as createdon,
     cast(null as timestamp) as updatedon
 
-from iban_base_os1_source
+from iban_base_os1
 
 union all
 
@@ -504,67 +576,68 @@ select
     dbt_updated_at,
     createdon,
     updatedon
-from iban_base_os2_source
+from iban_base_os2
 ),
 
 silver_layer AS (
 SELECT
-    mis_source_table,
-    os1_source_table,
-    iban_id,
-    iban_number,
-    bank_name,
-    created_by,
-    modified_by,
-    created_on,
-    modified_on,
-    iban_name,
-    account_holder,
-    branch_name,
-    status_reason,
-    state,
-    owner_name,
-    account_name,
-    iban_type,
-    workflow_status,
-    iban_type_id,
-    bank_id,
-    iban_status_id,
-    created_by_user_id,
-    updated_by_user_id,
-    created_by_cpr,
-    is_default,
-    customerprofileid,
-    portaluserid,
-    os2_ibanstatusid,
-    docchecklistguid,
-    os2_updatedby,
-    isverifiedbytarabut,
-    issalaryiban,
-    externalbankid,
-    currency,
-    deactivatedon,
-    docdeactivateguid,
-    reasonsfordeactivation,
-    payee_cpr_cr_license,
-    customer_name_commercial_name_english,
-    email,
-    mobile_number,
-    swift_code,
-    bic_code,
-    customer_type,
-    verified_on,
-    source_system_name,
-    is_deleted,
-    report_date,
-    dbt_updated_at,
-    createdon,
-    updatedon
-FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.iban_base
+    `mis_source_table`,
+    `os1_source_table`,
+    `iban_id`,
+    `iban_number`,
+    `bank_name`,
+    `created_by`,
+    `modified_by`,
+    `created_on`,
+    `modified_on`,
+    `iban_name`,
+    `account_holder`,
+    `branch_name`,
+    `status_reason`,
+    `state`,
+    `owner_name`,
+    `account_name`,
+    `iban_type`,
+    `workflow_status`,
+    `iban_type_id`,
+    `bank_id`,
+    `iban_status_id`,
+    `created_by_user_id`,
+    `updated_by_user_id`,
+    `created_by_cpr`,
+    `is_default`,
+    `customerprofileid`,
+    `portaluserid`,
+    `os2_ibanstatusid`,
+    `docchecklistguid`,
+    `os2_updatedby`,
+    `isverifiedbytarabut`,
+    `issalaryiban`,
+    `externalbankid`,
+    `currency`,
+    `deactivatedon`,
+    `docdeactivateguid`,
+    `reasonsfordeactivation`,
+    `payee_cpr_cr_license`,
+    `customer_name_commercial_name_english`,
+    `email`,
+    `mobile_number`,
+    `swift_code`,
+    `bic_code`,
+    `customer_type`,
+    `verified_on`,
+    `source_system_name`,
+    `is_deleted`,
+    `report_date`,
+    `dbt_updated_at`,
+    `createdon`,
+    `updatedon`
+FROM `tmkn-dwh-iceberg-dev-fc`.`tmkn-aws-dwh-dev-iceberg-silver`.`iban_base`
 ),
 
-bronze_columns(column_position, column_name) AS (
-    VALUES
+bronze_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'mis_source_table'),
         (2, 'os1_source_table'),
         (3, 'iban_id'),
@@ -616,10 +689,12 @@ bronze_columns(column_position, column_name) AS (
         (49, 'dbt_updated_at'),
         (50, 'createdon'),
         (51, 'updatedon')
+    ) AS t(column_position, column_name)
 ),
 
-silver_columns(column_position, column_name) AS (
-    VALUES
+silver_columns AS (
+    SELECT *
+    FROM (VALUES
         (1, 'mis_source_table'),
         (2, 'os1_source_table'),
         (3, 'iban_id'),
@@ -671,6 +746,7 @@ silver_columns(column_position, column_name) AS (
         (49, 'dbt_updated_at'),
         (50, 'createdon'),
         (51, 'updatedon')
+    ) AS t(column_position, column_name)
 ),
 
 bronze_normalized AS (
