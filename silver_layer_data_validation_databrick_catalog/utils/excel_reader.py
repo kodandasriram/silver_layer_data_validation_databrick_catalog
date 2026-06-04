@@ -260,8 +260,83 @@ def _find_matching_parenthesis(sql_text, open_index):
     return -1
 
 
+def _find_keyword_positions(sql_text, keyword):
+    positions = []
+    keyword_upper = keyword.upper()
+    keyword_length = len(keyword)
+    in_single_quote = False
+    in_double_quote = False
+    in_line_comment = False
+    in_block_comment = False
+    index = 0
+
+    while index < len(sql_text):
+        char = sql_text[index]
+        next_char = sql_text[index + 1] if index + 1 < len(sql_text) else ""
+
+        if in_block_comment:
+            if char == "*" and next_char == "/":
+                in_block_comment = False
+                index += 2
+            else:
+                index += 1
+            continue
+
+        if in_line_comment:
+            if char in "\r\n":
+                in_line_comment = False
+            index += 1
+            continue
+
+        if not in_single_quote and not in_double_quote and char == "/" and next_char == "*":
+            in_block_comment = True
+            index += 2
+            continue
+
+        if not in_single_quote and not in_double_quote and char == "-" and next_char == "-":
+            in_line_comment = True
+            index += 2
+            continue
+
+        if not in_double_quote and char == "'":
+            in_single_quote = not in_single_quote
+            index += 1
+            continue
+
+        if not in_single_quote and char == '"':
+            in_double_quote = not in_double_quote
+            index += 1
+            continue
+
+        if not in_single_quote and not in_double_quote:
+            current_word = sql_text[index:index + keyword_length]
+            previous_char = sql_text[index - 1] if index > 0 else ""
+            following_char = sql_text[index + keyword_length] if index + keyword_length < len(sql_text) else ""
+            if (
+                current_word.upper() == keyword_upper
+                and not (previous_char.isalnum() or previous_char == "_")
+                and not (following_char.isalnum() or following_char == "_")
+            ):
+                positions.append(index)
+                index += keyword_length
+                continue
+
+        index += 1
+
+    return positions
+
+
+def _find_cte_declaration(sql_text, cte_name):
+    pattern = re.compile(rf"\b{re.escape(cte_name)}\s+AS\s*\(", flags=re.IGNORECASE)
+    keyword_positions = set(_find_keyword_positions(sql_text, cte_name))
+    for match in pattern.finditer(sql_text):
+        if match.start() in keyword_positions:
+            return match
+    return None
+
+
 def _extract_cte_query(sql_text, cte_name, table_name, query_column):
-    cte_match = re.search(rf"\b{re.escape(cte_name)}\s+AS\s*\(", sql_text, flags=re.IGNORECASE)
+    cte_match = _find_cte_declaration(sql_text, cte_name)
     if not cte_match:
         return None, f"{query_column} is missing {cte_name} CTE for {table_name}"
 
@@ -270,16 +345,27 @@ def _extract_cte_query(sql_text, cte_name, table_name, query_column):
     if close_index == -1:
         return None, f"{query_column} has an incomplete {cte_name} CTE for {table_name}"
 
-    with_match = re.search(r"\bWITH\b", sql_text, flags=re.IGNORECASE)
-    if with_match and with_match.start() < cte_match.start():
+    cte_body = sql_text[open_index + 1:close_index].strip()
+    if re.match(r"^(WITH|SELECT)\b", cte_body, flags=re.IGNORECASE):
+        cte_query = cte_body
+    else:
+        cte_query = None
+
+    with_positions = [
+        position
+        for position in _find_keyword_positions(sql_text[:cte_match.start()], "WITH")
+        if position < cte_match.start()
+    ]
+    if cte_query is None and with_positions:
+        with_start = with_positions[-1]
         cte_query = f"""
             WITH
-            {sql_text[with_match.end():close_index + 1].strip()}
+            {sql_text[with_start + len("WITH"):close_index + 1].strip()}
             SELECT *
             FROM {cte_name}
         """.strip()
     else:
-        cte_query = sql_text[open_index + 1:close_index].strip()
+        cte_query = cte_query or cte_body
 
     if not cte_query:
         return None, f"{query_column} has an empty {cte_name} CTE for {table_name}"
